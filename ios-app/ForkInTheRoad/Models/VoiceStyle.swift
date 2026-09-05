@@ -54,6 +54,24 @@ struct VoiceStyle: Equatable {
     var pitchJitter: Float
     var rateJitter: Float
 
+    /// Per-clause random wobble, layered on top of the per-line jitter.
+    /// Without this every clause in a line sits at exactly the computed
+    /// value, and that dead-on regularity is what reads as robotic.
+    var clausePitchJitter: Float
+    var clauseRateJitter: Float
+
+    /// Random fraction each inter-clause pause is stretched or shrunk by,
+    /// so the rhythm isn't metronomic.
+    var pauseJitter: Double
+
+    /// Pitch lift on the first clause of a multi-clause line — the little
+    /// intake of energy at the start of a thought.
+    var onsetPitch: Float
+
+    /// Rate multiplier on the final clause. Real speech lengthens the end
+    /// of a phrase on top of dropping the pitch.
+    var finalRate: Float
+
     /// Dez: fast, high, jittery. Rushes through clauses, spikes on anything
     /// alarming, and never really lands the end of a sentence.
     static let anxious = VoiceStyle(
@@ -73,14 +91,19 @@ struct VoiceStyle: Equatable {
         openingPause: 0.0,
         closingPause: 0.15,
         pitchJitter: 0.05,
-        rateJitter: 0.05
+        rateJitter: 0.05,
+        clausePitchJitter: 0.05,
+        clauseRateJitter: 0.06,
+        pauseJitter: 0.30,
+        onsetPitch: 0.07,
+        finalRate: 0.92
     )
 
     /// Vale: slow, low, unbothered. Emphasis makes her go *quieter and
     /// slower* rather than louder — the deadpan read — and she takes a real
     /// beat before the last clause of anything.
     static let smug = VoiceStyle(
-        baseRate: 0.90,
+        baseRate: 1.17,
         basePitch: 0.86,
         baseVolume: 0.92,
         emphasisPitch: -0.05,
@@ -96,7 +119,12 @@ struct VoiceStyle: Equatable {
         openingPause: 0.10,
         closingPause: 0.25,
         pitchJitter: 0.02,
-        rateJitter: 0.02
+        rateJitter: 0.02,
+        clausePitchJitter: 0.03,
+        clauseRateJitter: 0.04,
+        pauseJitter: 0.18,
+        onsetPitch: 0.03,
+        finalRate: 0.88
     )
 
     /// Flat, neutral delivery — used when something is spoken without a
@@ -118,6 +146,11 @@ struct VoiceStyle: Equatable {
         openingPause: 0.0,
         closingPause: 0.0,
         pitchJitter: 0.0,
-        rateJitter: 0.0
+        rateJitter: 0.0,
+        clausePitchJitter: 0.0,
+        clauseRateJitter: 0.0,
+        pauseJitter: 0.0,
+        onsetPitch: 0.0,
+        finalRate: 1.0
     )
 }

@@ -15,6 +15,8 @@ struct TripProgressView: View {
                 progressItem(title: "ETA", value: etaLabel)
             }
             .padding(.vertical, 12)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, maxHeight: 120)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
         }
     }

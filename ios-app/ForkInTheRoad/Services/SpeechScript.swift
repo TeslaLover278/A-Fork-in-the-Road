@@ -216,9 +216,23 @@ enum SpeechScript {
         for (index, clause) in clauses.enumerated() {
             let isLast = index == clauses.count - 1
 
-            var pitch = style.basePitch + pitchWobble - style.declinationPerClause * Float(index)
-            var rate = style.baseRate * (1 + rateWobble)
+            // Per-clause wobble sits on top of the per-line wobble: small
+            // enough that the character stays in one mood, varied enough
+            // that no two clauses land on the same note.
+            let clausePitchWobble = style.clausePitchJitter > 0
+                ? Float.random(in: -style.clausePitchJitter...style.clausePitchJitter) : 0
+            let clauseRateWobble = style.clauseRateJitter > 0
+                ? Float.random(in: -style.clauseRateJitter...style.clauseRateJitter) : 0
+
+            var pitch = style.basePitch + pitchWobble + clausePitchWobble
+                - style.declinationPerClause * Float(index)
+            var rate = style.baseRate * (1 + rateWobble) * (1 + clauseRateWobble)
             var volume = style.baseVolume
+
+            // The intake of energy at the start of a multi-clause line.
+            if index == 0, clauses.count > 1 {
+                pitch += style.onsetPitch
+            }
 
             if clause.isShouted {
                 pitch += style.emphasisPitch
@@ -237,9 +251,11 @@ enum SpeechScript {
             }
 
             // The settle at the end of a thought — but not on a question or
-            // a shout, which end up rather than down.
+            // a shout, which end up rather than down. The phrase also
+            // lengthens: the last clause is spoken a touch slower.
             if isLast, !clause.isShouted, clause.terminator != .question {
                 pitch += style.finalPitch
+                rate *= style.finalRate
             }
 
             var preDelay = pendingPause
@@ -256,7 +272,9 @@ enum SpeechScript {
                 postUtteranceDelay: isLast ? style.closingPause : 0
             ))
 
-            pendingPause = clause.terminator.pause * style.pauseScale
+            let pauseWobble = style.pauseJitter > 0
+                ? Double.random(in: -style.pauseJitter...style.pauseJitter) : 0
+            pendingPause = clause.terminator.pause * style.pauseScale * (1 + pauseWobble)
         }
 
         return fragments

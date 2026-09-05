@@ -39,6 +39,7 @@ struct ContentView: View {
                 NavigationScreen(
                     navigationEngine: navigationEngine,
                     banterEngine: banterEngine,
+                    banterSettings: banterSettings,
                     unitSettings: unitSettings,
                     onMenu: { showMenu = true },
                     onEnd: endTrip
@@ -110,6 +111,7 @@ struct ContentView: View {
 private struct NavigationScreen: View {
     @ObservedObject var navigationEngine: NavigationEngine
     @ObservedObject var banterEngine: BanterEngine
+    @ObservedObject var banterSettings: BanterSettings
     @ObservedObject var unitSettings: UnitSettings
     let onMenu: () -> Void
     let onEnd: () -> Void
@@ -122,7 +124,7 @@ private struct NavigationScreen: View {
             VStack {
                 TurnBannerView(navigationEngine: navigationEngine, unitSettings: unitSettings)
                 Spacer()
-                if let caption = banterEngine.currentCaption {
+                if banterSettings.showCaptions, let caption = banterEngine.currentCaption {
                     BanterCaptionView(personaID: caption.personaID, text: caption.text)
                         .padding(.bottom, 8)
                 }

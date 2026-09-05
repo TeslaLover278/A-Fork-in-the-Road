@@ -71,11 +71,15 @@ final class BanterSettings: ObservableObject {
     @Published var speechRateMultiplier: Double {
         didSet { UserDefaults.standard.set(speechRateMultiplier, forKey: Keys.rate) }
     }
+    @Published var showCaptions: Bool {
+        didSet { UserDefaults.standard.set(showCaptions, forKey: Keys.showCaptions) }
+    }
 
     private enum Keys {
         static let frequency = "banter.frequency"
         static let muted = "banter.mutedPersonaIDs"
         static let rate = "banter.speechRateMultiplier"
+        static let showCaptions = "banter.showCaptions"
     }
 
     init() {
@@ -83,6 +87,7 @@ final class BanterSettings: ObservableObject {
         frequency = BanterFrequency(rawValue: defaults.string(forKey: Keys.frequency) ?? "") ?? .occasional
         mutedPersonaIDs = Set(defaults.stringArray(forKey: Keys.muted) ?? [])
         speechRateMultiplier = defaults.object(forKey: Keys.rate) as? Double ?? 1.0
+        showCaptions = defaults.object(forKey: Keys.showCaptions) as? Bool ?? true
     }
 
     func isMuted(_ persona: VoicePersona) -> Bool {

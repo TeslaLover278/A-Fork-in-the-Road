@@ -46,6 +46,12 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            Section {
+                Toggle("Show captions", isOn: $settings.showCaptions)
+            } footer: {
+                Text("Shows banter as on-screen subtitles while it's being spoken.")
+            }
         }
         .navigationTitle("Voices & Banter")
         .navigationBarTitleDisplayMode(.inline)
