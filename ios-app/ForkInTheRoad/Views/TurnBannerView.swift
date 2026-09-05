@@ -5,6 +5,7 @@ import SwiftUI
 /// never delayed or altered by the comedic layer.
 struct TurnBannerView: View {
     @ObservedObject var navigationEngine: NavigationEngine
+    @ObservedObject var unitSettings: UnitSettings
 
     var body: some View {
         if navigationEngine.state == .navigating || navigationEngine.state == .rerouting,
@@ -31,11 +32,6 @@ struct TurnBannerView: View {
     }
 
     private var distanceLabel: String {
-        let distance = navigationEngine.distanceToNextManeuver
-        if distance < 1000 {
-            return "\(Int(distance)) m"
-        } else {
-            return String(format: "%.1f km", distance / 1000)
-        }
+        unitSettings.shortDistance(navigationEngine.distanceToNextManeuver)
     }
 }

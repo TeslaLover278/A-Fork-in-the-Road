@@ -28,6 +28,12 @@ struct SpeechRequest {
 /// navigation utterance is handed to the synthesizer; gating on it would let
 /// a banter line that was enqueued in the same runloop turn slip out on top
 /// of the instruction.
+///
+/// One banter line is several utterances, not one: `SpeechScript` cuts it
+/// into clauses so each can be delivered with its own pitch, rate and pause.
+/// They are spoken one at a time and hold the banter lane for the whole
+/// sequence, so a half-spoken line can still be cut off cleanly by a real
+/// instruction — the remaining clauses are dropped with it.
 @MainActor
 final class SpeechQueueManager: NSObject, ObservableObject {
     @Published private(set) var isSpeakingBanter = false
@@ -37,6 +43,11 @@ final class SpeechQueueManager: NSObject, ObservableObject {
     private var banterQueue: [SpeechRequest] = []
     private var currentLane: SpeechLane?
     private var currentBanterFinishHandler: (() -> Void)?
+
+    /// Clauses of the banter line currently being spoken that haven't been
+    /// handed to the synthesizer yet. Non-empty means the line is mid-
+    /// delivery and still owns the banter lane.
+    private var pendingFragments: [AVSpeechUtterance] = []
 
     /// The utterance currently owning the navigation lane. Held by identity
     /// so the delegate callbacks can tell a finished/cancelled *navigation*
@@ -62,12 +73,17 @@ final class SpeechQueueManager: NSObject, ObservableObject {
             synthesizer.stopSpeaking(at: .word)
         }
         banterQueue.removeAll()
+        pendingFragments.removeAll()
         currentBanterFinishHandler = nil
         isSpeakingBanter = false
         activePersonaID = nil
         currentLane = .navigation
 
+        // Instructions get no persona and no expression — they are the part
+        // that has to be understood the first time — but they do get the
+        // best-quality variant of the system voice.
         let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = VoiceCatalog.shared.navigationVoice()
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         navigationUtterance = utterance
         synthesizer.speak(utterance)
@@ -92,6 +108,7 @@ final class SpeechQueueManager: NSObject, ObservableObject {
             currentLane = nil
         }
         banterQueue.removeAll()
+        pendingFragments.removeAll()
         currentBanterFinishHandler = nil
         isSpeakingBanter = false
         activePersonaID = nil
@@ -102,20 +119,38 @@ final class SpeechQueueManager: NSObject, ObservableObject {
         // reports itself as speaking; see the note on the class.
         guard currentLane == nil, !synthesizer.isSpeaking, !banterQueue.isEmpty else { return }
         let next = banterQueue.removeFirst()
+
+        let fragments = SpeechScript.utterances(
+            for: next.text,
+            persona: next.persona,
+            rateMultiplier: next.rateMultiplier
+        )
+        // An empty or punctuation-only line has nothing to perform. Report it
+        // as finished so callers aren't left waiting on a line that never
+        // starts, and move on to the next one.
+        guard !fragments.isEmpty else {
+            next.onFinish?()
+            playNextBanterIfIdle()
+            return
+        }
+
         currentLane = .banter
         isSpeakingBanter = true
         activePersonaID = next.persona?.id
         currentBanterFinishHandler = next.onFinish
         next.onStart?()
 
-        let utterance = AVSpeechUtterance(string: next.text)
-        if let persona = next.persona {
-            utterance.voice = persona.resolvedVoice()
-            utterance.pitchMultiplier = persona.pitchMultiplier
-            let rate = persona.rate * Float(next.rateMultiplier)
-            utterance.rate = min(AVSpeechUtteranceMaximumSpeechRate, max(AVSpeechUtteranceMinimumSpeechRate, rate))
-        }
-        synthesizer.speak(utterance)
+        pendingFragments = fragments
+        speakNextFragment()
+    }
+
+    /// Hands the next clause of the current line to the synthesizer. Clauses
+    /// are spoken one at a time rather than queued up front so that a
+    /// navigation instruction interrupting mid-line only has to cancel the
+    /// one utterance actually in flight.
+    private func speakNextFragment() {
+        guard !pendingFragments.isEmpty else { return }
+        synthesizer.speak(pendingFragments.removeFirst())
     }
 
     fileprivate func handleFinished(_ utterance: AVSpeechUtterance) {
@@ -126,6 +161,11 @@ final class SpeechQueueManager: NSObject, ObservableObject {
             currentLane = nil
             playNextBanterIfIdle()
         } else if currentLane == .banter {
+            // Still mid-line: keep the lane and speak the next clause.
+            if !pendingFragments.isEmpty {
+                speakNextFragment()
+                return
+            }
             currentBanterFinishHandler?()
             currentBanterFinishHandler = nil
             isSpeakingBanter = false
@@ -142,10 +182,13 @@ final class SpeechQueueManager: NSObject, ObservableObject {
             playNextBanterIfIdle()
             return
         }
-        // A cancelled banter line. Don't clear the lane blindly: when
-        // `speakNavigation` interrupts banter it has already claimed the
-        // navigation lane by the time this callback lands, and clearing it
-        // here would let the next banter line talk over the instruction.
+        // A cancelled banter line. Drop the rest of its clauses — half a
+        // line is finished the moment it's interrupted. Don't clear the lane
+        // blindly, though: when `speakNavigation` interrupts banter it has
+        // already claimed the navigation lane by the time this callback
+        // lands, and clearing it here would let the next banter line talk
+        // over the instruction.
+        pendingFragments.removeAll()
         currentBanterFinishHandler = nil
         isSpeakingBanter = false
         activePersonaID = nil

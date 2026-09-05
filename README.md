@@ -30,6 +30,12 @@ Xcode-GUI route is documented alongside it. In short:
 - **Navigation**: MapKit (`MKDirections`, live `CLLocationManager` tracking,
   off-route detection against the route polyline, automatic reroute).
 - **Voices**: on-device `AVSpeechSynthesizer`, no cloud TTS, no API keys.
+  Each persona resolves to the best-quality installed variant of a named
+  system voice (`Services/../VoiceCatalog`), and every line is cut at its
+  punctuation and performed clause by clause — pitch, rate, volume and pauses
+  per clause, from a per-character profile in `Models/VoiceStyle.swift`. Dez
+  rushes and spikes; Vale drags and sits on a punchline. That prosody pass is
+  what keeps them from sounding like one flat robot reading two scripts.
 - **Banter**: a scripted content bank (`Content/BanterLineBank.swift`) picked
   by a small rules engine (`Services/BanterEngine.swift`). This works fully
   offline and needs no backend; the backend upgrades it to generated lines

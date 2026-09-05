@@ -17,6 +17,9 @@ final class NavigationEngine: ObservableObject {
     @Published private(set) var etaMinutes: Int = 0
     @Published private(set) var destinationName: String = ""
 
+    private var routeTotalDistance: CLLocationDistance = 0
+    private var routeExpectedTravelTime: TimeInterval = 0
+
     let events = PassthroughSubject<NavigationEvent, Never>()
 
     private var destinationItem: MKMapItem?
@@ -46,6 +49,10 @@ final class NavigationEngine: ObservableObject {
         steps = []
         currentStepIndex = 0
         destinationItem = nil
+        distanceRemainingTotal = 0
+        etaMinutes = 0
+        routeTotalDistance = 0
+        routeExpectedTravelTime = 0
         idleTimer?.invalidate()
         idleTimer = nil
     }
@@ -68,6 +75,7 @@ final class NavigationEngine: ObservableObject {
 
         announceApproachIfNeeded()
         checkOffRoute(location: location)
+        updateRemainingProgress(with: location)
     }
 
     // MARK: - Route calculation
@@ -107,6 +115,8 @@ final class NavigationEngine: ObservableObject {
 
     private func applyNewRoute(_ newRoute: MKRoute) {
         route = newRoute
+        routeTotalDistance = newRoute.distance
+        routeExpectedTravelTime = newRoute.expectedTravelTime
         steps = newRoute.steps.map {
             RouteStepInfo(instructions: $0.instructions, distance: $0.distance, polyline: $0.polyline)
         }
@@ -176,6 +186,24 @@ final class NavigationEngine: ObservableObject {
         } else {
             offRouteStrikeCount = 0
         }
+    }
+
+    /// Recomputes the total distance and ETA remaining whenever a location
+    /// update comes in. Falls back to the route's overall average speed when
+    /// the current GPS speed isn't usable.
+    private func updateRemainingProgress(with location: CLLocation) {
+        let remainingStepsDistance = steps[(currentStepIndex + 1)...].reduce(0) { $0 + $1.distance }
+        distanceRemainingTotal = distanceToNextManeuver + remainingStepsDistance
+
+        let remainingSeconds: TimeInterval
+        if location.speed > 1, distanceRemainingTotal > 0 {
+            remainingSeconds = distanceRemainingTotal / location.speed
+        } else if routeTotalDistance > 0 {
+            remainingSeconds = (distanceRemainingTotal / routeTotalDistance) * routeExpectedTravelTime
+        } else {
+            remainingSeconds = 0
+        }
+        etaMinutes = Int((remainingSeconds / 60).rounded())
     }
 
     // MARK: - Idle chatter timer

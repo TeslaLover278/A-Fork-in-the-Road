@@ -1,50 +1,103 @@
 import SwiftUI
 
+/// Voice and banter controls. This is a pushed page inside `MenuView`, not a
+/// sheet of its own, so it deliberately brings no NavigationStack or Done
+/// button with it.
 struct SettingsView: View {
     @ObservedObject var settings: BanterSettings
-    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var speechQueue: SpeechQueueManager
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Banter frequency") {
-                    Picker("Frequency", selection: $settings.frequency) {
-                        ForEach(BanterFrequency.allCases) { frequency in
-                            Text(frequency.displayName).tag(frequency)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                Section("Voice characters") {
-                    ForEach(VoicePersona.all) { persona in
-                        Toggle(isOn: Binding(
-                            get: { !settings.isMuted(persona) },
-                            set: { _ in settings.toggleMute(persona) }
-                        )) {
-                            VStack(alignment: .leading) {
-                                Text(persona.displayName).font(.headline)
-                                Text(persona.tagline)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
+        Form {
+            Section("Banter frequency") {
+                Picker("Frequency", selection: $settings.frequency) {
+                    ForEach(BanterFrequency.allCases) { frequency in
+                        Text(frequency.displayName).tag(frequency)
                     }
                 }
+                .pickerStyle(.segmented)
+            }
 
-                Section("Speech rate") {
-                    Slider(value: $settings.speechRateMultiplier, in: 0.75...1.25, step: 0.05)
-                    Text("Adjusts how fast both characters talk. Real turn-by-turn directions are unaffected.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            Section {
+                ForEach(VoicePersona.all) { persona in
+                    PersonaRow(
+                        persona: persona,
+                        isOn: !settings.isMuted(persona),
+                        isSpeaking: speechQueue.activePersonaID == persona.id,
+                        onToggle: { settings.toggleMute(persona) },
+                        onPreview: { preview(persona) }
+                    )
+                }
+            } header: {
+                Text("Voice characters")
+            } footer: {
+                if VoiceCatalog.shared.allVoicesAreBasicQuality() {
+                    // The single biggest win available on the voices, and
+                    // nothing the app can do for the user itself — the
+                    // downloads live behind an Accessibility screen with
+                    // no public URL to deep-link to.
+                    Text("Both characters are using basic system voices. For much better ones, download an Enhanced or Premium English voice in Settings › Accessibility › Spoken Content › Voices, then come back here.")
                 }
             }
-            .navigationTitle("Settings")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
+
+            Section("Speech rate") {
+                Slider(value: $settings.speechRateMultiplier, in: 0.75...1.25, step: 0.05)
+                Text("Adjusts how fast both characters talk. Real turn-by-turn directions are unaffected.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
+        .navigationTitle("Voices & Banter")
+        .navigationBarTitleDisplayMode(.inline)
+        .onDisappear { speechQueue.stopAllBanter() }
+    }
+
+    /// Previews go through the same banter lane as everything else, so a real
+    /// instruction still cuts a preview off mid-word if one arrives while
+    /// Settings is open mid-drive.
+    private func preview(_ persona: VoicePersona) {
+        speechQueue.stopAllBanter()
+        speechQueue.enqueueBanter(SpeechRequest(
+            text: persona.previewLine,
+            persona: persona,
+            rateMultiplier: settings.speechRateMultiplier,
+            onStart: nil,
+            onFinish: nil
+        ))
+    }
+}
+
+private struct PersonaRow: View {
+    let persona: VoicePersona
+    let isOn: Bool
+    let isSpeaking: Bool
+    let onToggle: () -> Void
+    let onPreview: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Toggle(isOn: Binding(get: { isOn }, set: { _ in onToggle() })) {
+                Text(persona.displayName).font(.headline)
+            }
+
+            Text(persona.tagline)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Text(VoiceCatalog.shared.description(for: persona))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                Spacer()
+                Button(action: onPreview) {
+                    Label(isSpeaking ? "Playing" : "Preview", systemImage: isSpeaking ? "waveform" : "play.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(isSpeaking)
+            }
+        }
+        .padding(.vertical, 2)
     }
 }

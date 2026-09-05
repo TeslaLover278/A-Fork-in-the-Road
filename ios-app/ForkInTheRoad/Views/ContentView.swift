@@ -11,8 +11,10 @@ struct ContentView: View {
     @StateObject private var banterSettings: BanterSettings
     @StateObject private var speechQueue: SpeechQueueManager
     @StateObject private var banterEngine: BanterEngine
+    @StateObject private var unitSettings = UnitSettings()
 
-    @State private var showSettings = false
+    @State private var showMenu = false
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let settings = BanterSettings()
@@ -26,25 +28,40 @@ struct ContentView: View {
         Group {
             switch navigationEngine.state {
             case .idle, .searchingDestination, .calculatingRoute:
-                SearchDestinationView(hasLocationFix: locationService.currentLocation != nil) { destination in
-                    start(to: destination)
-                }
+                HomeView(
+                    locationService: locationService,
+                    unitSettings: unitSettings,
+                    isCalculatingRoute: navigationEngine.state == .calculatingRoute,
+                    onOpenMenu: { showMenu = true },
+                    onStart: start
+                )
             case .navigating, .rerouting:
                 NavigationScreen(
                     navigationEngine: navigationEngine,
                     banterEngine: banterEngine,
-                    onSettings: { showSettings = true },
+                    unitSettings: unitSettings,
+                    onMenu: { showMenu = true },
                     onEnd: endTrip
                 )
             case .arrived:
                 TripSummaryView(destinationName: navigationEngine.destinationName, onDone: endTrip)
             }
         }
-        .sheet(isPresented: $showSettings) {
-            SettingsView(settings: banterSettings)
+        .sheet(isPresented: $showMenu) {
+            MenuView(
+                banterSettings: banterSettings,
+                unitSettings: unitSettings,
+                speechQueue: speechQueue
+            )
         }
         .onAppear {
             locationService.requestPermission()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // The set of installed voices can change while we're backgrounded
+            // — downloading an Enhanced voice is exactly what Settings tells
+            // the user to go and do — so re-resolve on the way back in.
+            if phase == .active { VoiceCatalog.shared.invalidate() }
         }
         .onReceive(navigationEngine.events) { event in
             handle(event)
@@ -76,7 +93,7 @@ struct ContentView: View {
         case .tripStarted(let destinationName):
             speechQueue.speakNavigation("Starting navigation to \(destinationName).")
         case .approachingManeuver(let step, let distanceRemaining):
-            speechQueue.speakNavigation("In \(Int(distanceRemaining)) meters, \(step.instructions).")
+            speechQueue.speakNavigation("In \(unitSettings.spokenDistance(distanceRemaining)), \(step.instructions).")
         case .wentOffRoute:
             speechQueue.speakNavigation("Rerouting.")
         case .arrived:
@@ -93,7 +110,8 @@ struct ContentView: View {
 private struct NavigationScreen: View {
     @ObservedObject var navigationEngine: NavigationEngine
     @ObservedObject var banterEngine: BanterEngine
-    let onSettings: () -> Void
+    @ObservedObject var unitSettings: UnitSettings
+    let onMenu: () -> Void
     let onEnd: () -> Void
 
     var body: some View {
@@ -102,19 +120,22 @@ private struct NavigationScreen: View {
                 .ignoresSafeArea()
 
             VStack {
-                TurnBannerView(navigationEngine: navigationEngine)
+                TurnBannerView(navigationEngine: navigationEngine, unitSettings: unitSettings)
                 Spacer()
                 if let caption = banterEngine.currentCaption {
                     BanterCaptionView(personaID: caption.personaID, text: caption.text)
-                        .padding(.bottom, 24)
+                        .padding(.bottom, 8)
                 }
+                TripProgressView(navigationEngine: navigationEngine, unitSettings: unitSettings)
+                    .padding(.horizontal)
+                    .padding(.bottom, 24)
             }
             .padding(.top, 8)
 
             VStack {
                 HStack {
                     Spacer()
-                    Button(action: onSettings) {
+                    Button(action: onMenu) {
                         Image(systemName: "gearshape.fill")
                             .font(.title2)
                             .foregroundStyle(.white, .black.opacity(0.6))

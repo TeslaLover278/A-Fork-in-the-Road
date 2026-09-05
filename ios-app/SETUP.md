@@ -89,13 +89,22 @@ untested without a compiler/device on hand while writing it:
   would expect the next instruction — drive one real route and adjust
   `stepAdvanceRadius`/`approachAnnounceDistance` in `NavigationEngine.swift`
   if instructions feel early/late.
-- **Voice matching** (`VoicePersona.resolvedVoice`): the two personas look
-  for named system voices (`Fred`, `Samantha`, etc.) that may or may not be
-  installed/downloaded on a given device or simulator. If neither preferred
-  voice is found, it falls back to the plain system default for both — so
-  they'll sound distinct in pitch/rate even if the exact character voice
-  isn't available, but for full personality, download a couple of
-  personality voices under **Settings > Accessibility > Spoken Content >
-  Voices** on the test device.
+- **Voice matching** (`VoiceCatalog` in `VoicePersona.swift`): each persona
+  lists preferred system voices in order (`Tom`, `Aaron`, … / `Ava`, `Zoe`,
+  …) and takes the highest-quality variant installed of the first one it
+  finds; failing that, the best voice in the right register. A stock
+  simulator usually has only the compact variants, which sound noticeably
+  worse than what a real device with a downloaded voice gets — so judge the
+  voices on hardware, after downloading an Enhanced or Premium English voice
+  under **Settings > Accessibility > Spoken Content > Voices**. The app's own
+  Settings screen shows which voice and quality each persona resolved to, has
+  a per-persona preview button, and prompts for the download if both landed
+  on basic voices.
+- **Delivery** (`Services/SpeechScript.swift`): lines are cut at their
+  punctuation and each clause is spoken with its own pitch/rate/volume and
+  pause. The parameters live in `Models/VoiceStyle.swift` and are the thing
+  to tune by ear on a device — `pauseScale` and `punchlinePause` in
+  particular change comic timing a lot, and are easiest to judge with the
+  Settings preview button rather than by driving.
 - No unit/UI tests are included — the plan explicitly scoped this to
   UX/feature/voice-system design, not test infrastructure.
