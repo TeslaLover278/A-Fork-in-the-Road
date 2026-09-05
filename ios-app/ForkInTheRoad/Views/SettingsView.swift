@@ -9,6 +9,14 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section {
+                Toggle("Real directions", isOn: $settings.realDirectionsEnabled)
+            } footer: {
+                Text(settings.realDirectionsEnabled
+                     ? "Turns are read out in a plain voice, like a normal maps app."
+                     : "Turns are delivered by Dez and Vale instead of a plain voice — Dez calls out the turn, Vale disagrees with him about it. Turn this on for a plain, literal voice instead.")
+            }
+
             Section("Banter frequency") {
                 Picker("Frequency", selection: $settings.frequency) {
                     ForEach(BanterFrequency.allCases) { frequency in
@@ -42,7 +50,7 @@ struct SettingsView: View {
 
             Section("Speech rate") {
                 Slider(value: $settings.speechRateMultiplier, in: 0.75...1.25, step: 0.05)
-                Text("Adjusts how fast both characters talk. Real turn-by-turn directions are unaffected.")
+                Text("Adjusts how fast both characters talk, including when they're calling out a turn. The plain voice used when Real Directions is on is unaffected.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

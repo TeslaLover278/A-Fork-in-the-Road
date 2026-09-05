@@ -15,10 +15,12 @@ struct NavigationMapView: View {
             }
         }
         .mapScope(mapScope)
-        .overlay(alignment: .bottomTrailing) {
+        // Mid-trailing edge: the turn banner (top), banter caption, and
+        // TripProgressView (bottom) are all full-width and vary in height,
+        // so any fixed top/bottom offset risks getting covered by one of them.
+        .overlay(alignment: .trailing) {
             MapUserLocationButton(scope: mapScope)
                 .padding(.trailing, 16)
-                .padding(.bottom, 16)
         }
     }
 }

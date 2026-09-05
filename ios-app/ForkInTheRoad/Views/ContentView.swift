@@ -11,7 +11,7 @@ struct ContentView: View {
     @StateObject private var banterSettings: BanterSettings
     @StateObject private var speechQueue: SpeechQueueManager
     @StateObject private var banterEngine: BanterEngine
-    @StateObject private var unitSettings = UnitSettings()
+    @StateObject private var unitSettings: UnitSettings
 
     @State private var showMenu = false
     @Environment(\.scenePhase) private var scenePhase
@@ -91,12 +91,20 @@ struct ContentView: View {
     /// applies) and always forwards the event to BanterEngine. Real
     /// instructions are spoken via `speakNavigation`, which unconditionally
     /// preempts any banter in progress — that's the whole guarantee.
+    ///
+    /// Turns are the exception: by default the plain instruction below is
+    /// skipped entirely and Dez/Vale deliver the turn themselves (see
+    /// `BanterEngine.announceManeuver`), unless the user turned on real
+    /// directions in Settings — `mustUseRealDirections` covers that toggle
+    /// plus the cases where there's simply nobody left to say it.
     private func handle(_ event: NavigationEvent) {
         switch event {
         case .tripStarted(let destinationName):
             speechQueue.speakNavigation("Starting navigation to \(destinationName).")
         case .approachingManeuver(let step, let distanceRemaining):
-            speechQueue.speakNavigation("In \(unitSettings.spokenDistance(distanceRemaining)), \(step.instructions).")
+            if banterSettings.mustUseRealDirections {
+                speechQueue.speakNavigation("In \(unitSettings.spokenDistance(distanceRemaining)), \(step.instructions).")
+            }
         case .wentOffRoute:
             speechQueue.speakNavigation("Rerouting.")
         case .arrived:
