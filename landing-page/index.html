@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fork in the Road — navigation with backseat drivers</title>
+  <meta name="description" content="Turn-by-turn navigation, plus two comedic AI voices who won't stop bickering about your route.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header class="hero">
+    <nav class="nav">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">🔀</span>
+        Fork in the Road
+      </div>
+      <a class="nav-cta" href="#download">Get the app</a>
+    </nav>
+
+    <div class="hero-content">
+      <p class="eyebrow">Turn-by-turn navigation, plus two people who won't stop talking</p>
+      <h1>Real directions.<br>Unnecessary commentary.</h1>
+      <p class="lede">
+        Fork in the Road is a normal turn-by-turn maps app — live GPS,
+        real routes, automatic rerouting — except two comedic voices are
+        riding along, bickering about every turn, every delay, and every
+        decision you make behind the wheel.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#download">Download on the App Store</a>
+        <a class="btn btn-ghost" href="#how-it-works">See how it works</a>
+      </div>
+    </div>
+
+    <div class="phone-mock" role="img" aria-label="App preview showing a turn-by-turn map with a caption bubble reading a joke from the character Vale">
+      <svg viewBox="0 0 280 560" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="4" width="272" height="552" rx="36" class="phone-frame"/>
+        <rect x="16" y="16" width="248" height="528" rx="26" class="phone-screen"/>
+
+        <!-- map roads -->
+        <g class="map-roads">
+          <path d="M20 480 L110 380 L140 300 L100 220 L150 120" class="road-bg"/>
+          <path d="M20 480 L110 380 L140 300 L100 220 L150 120" class="road-route"/>
+        </g>
+        <circle cx="110" cy="380" r="5" class="map-dot"/>
+        <circle cx="150" cy="120" r="6" class="map-dest"/>
+
+        <!-- turn banner -->
+        <rect x="28" y="34" width="224" height="56" rx="14" class="card"/>
+        <text x="46" y="58" class="card-title">300 m</text>
+        <text x="46" y="76" class="card-sub">Turn left onto 5th Ave</text>
+        <path d="M232 52 l10 10 l-10 10" class="chevron"/>
+
+        <!-- banter caption -->
+        <rect x="28" y="452" width="224" height="60" rx="14" class="card caption-card"/>
+        <circle cx="46" cy="470" r="5" class="dot-vale"/>
+        <text x="58" y="474" class="caption-name">Vale</text>
+        <text x="46" y="494" class="caption-text">Called it. Smoothest</text>
+        <text x="46" y="506" class="caption-text">turn of the whole drive.</text>
+      </svg>
+    </div>
+  </header>
+
+  <main>
+    <section id="how-it-works" class="section">
+      <h2>How it works</h2>
+      <p class="section-lede">Real navigation stays real navigation. The comedy rides shotgun.</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <h3>Set a destination</h3>
+          <p>Search an address or place, same as any maps app. Fork in the Road calculates a live route and starts tracking your GPS position immediately.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <h3>Drive, get real directions</h3>
+          <p>Turn-by-turn instructions are announced at the right moment, every time. If you miss a turn, it reroutes automatically — no different from any other nav app.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <h3>Get heckled the whole way</h3>
+          <p>Between instructions, Dez and Vale banter about the drive — at start, before turns, during reroutes, on arrival, and occasionally out of nowhere on a long straightaway. Their commentary never delays or replaces a real instruction.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section cast">
+      <h2>Meet the cast</h2>
+      <p class="section-lede">Two voices. Zero navigational expertise. Strong opinions anyway.</p>
+
+      <div class="cast-cards">
+        <article class="cast-card cast-dez">
+          <div class="cast-avatar" aria-hidden="true">😰</div>
+          <h3>Dez</h3>
+          <p class="cast-role">The dramatic one</p>
+          <p class="cast-desc">Convinced every trip is a near-death experience. Narrates brake lights like breaking news.</p>
+          <blockquote>&ldquo;Recalculating. That word has never once meant anything good.&rdquo;</blockquote>
+        </article>
+
+        <article class="cast-card cast-vale">
+          <div class="cast-avatar" aria-hidden="true">😏</div>
+          <h3>Vale</h3>
+          <p class="cast-role">The smug one</p>
+          <p class="cast-desc">Has never once been wrong, according to Vale. Backseat-drives with total, unearned confidence.</p>
+          <blockquote>&ldquo;And that, Dez, is how it's done.&rdquo;</blockquote>
+        </article>
+      </div>
+    </section>
+
+    <section class="section settings-preview">
+      <h2>As chatty as you want</h2>
+      <p class="section-lede">
+        A frequency toggle in Settings goes from <strong>Off</strong> — real directions only —
+        to <strong>Occasional</strong> — commentary at the big moments — to <strong>Chatty</strong>
+        — near-constant bickering, including idle chatter on long straightaways. Mute either
+        character individually, any time.
+      </p>
+      <div class="freq-pills">
+        <span class="pill">Off</span>
+        <span class="pill pill-active">Occasional</span>
+        <span class="pill">Chatty</span>
+      </div>
+    </section>
+
+    <section id="download" class="section download">
+      <h2>Get where you're going. Reluctantly entertained.</h2>
+      <p class="section-lede">Coming soon to the App Store.</p>
+      <!-- TODO: replace with the real App Store badge/link once the app is live -->
+      <a class="btn btn-primary btn-large" href="#" aria-disabled="true">
+        Download on the App Store
+      </a>
+      <p class="fine-print">Placeholder link — swap in the real App Store URL at launch.</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">🔀</span>
+      Fork in the Road
+    </div>
+    <p>&copy; 2026 Fork in the Road. Not affiliated with any actual backseat drivers.</p>
+  </footer>
+
+</body>
+</html>

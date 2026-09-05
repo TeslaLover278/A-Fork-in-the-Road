@@ -1,0 +1,31 @@
+# Xcode projects here are generated from ios-app/project.yml (XcodeGen) and
+# are disposable — regenerate rather than committing them.
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+build/
+*.xcuserstate
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# macOS / Windows
+.DS_Store
+Thumbs.db
+
+# Secrets. The app is fully client-side and needs no keys, but keep this
+# ignored so that stays true by accident as well as by design.
+.env
+
+# Node (backend/)
+node_modules/
+dist/
+*.log
+npm-debug.log*
+.env.local
+.env.*.local
