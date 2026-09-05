@@ -16,6 +16,7 @@ in the way of the actual directions.
 
 ```
 ios-app/            SwiftUI + MapKit source for the iOS app (see below)
+backend/            Node + TypeScript API (banter, accounts, content)
 landing-page/       Static single-page marketing site
 ```
 
@@ -30,8 +31,9 @@ Xcode-GUI route is documented alongside it. In short:
   off-route detection against the route polyline, automatic reroute).
 - **Voices**: on-device `AVSpeechSynthesizer`, no cloud TTS, no API keys.
 - **Banter**: a scripted content bank (`Content/BanterLineBank.swift`) picked
-  by a small rules engine (`Services/BanterEngine.swift`) — not a live LLM
-  call, so it works fully offline and needs no backend.
+  by a small rules engine (`Services/BanterEngine.swift`). This works fully
+  offline and needs no backend; the backend upgrades it to generated lines
+  when reachable, and is not required for the app to function.
 - **The core guarantee**: `Services/SpeechQueueManager.swift` is the single
   owner of speech output. Real turn-by-turn instructions always interrupt
   and take priority over banter; banter only ever plays in the gaps.
@@ -42,8 +44,32 @@ from the source files in a few minutes, and flags the couple of things
 (step-timing heuristics, voice availability) worth sanity-checking on a real
 device once you can build it.
 
-Explicitly out of scope for this build: backend/server architecture,
-hosting, and database design — the whole system runs client-side.
+The app is designed to run entirely client-side and still work — the
+backend below is an enhancement layer, never a dependency.
+
+## Backend
+
+`backend/` is a Node + TypeScript service (Fastify + SQLite). See
+[`backend/README.md`](backend/README.md) for the full API and design notes.
+It does three things:
+
+- **Generated banter** — fresh Dez/Vale lines from the Claude API instead of
+  the fixed script. Every generated line is re-checked server-side and
+  rejected if it could be mistaken for a real driving instruction; anything
+  filtered falls back to the scripted bank. `/v1/banter` never returns a
+  server error for a generation problem, so the app degrades to its offline
+  behaviour rather than to an error mid-drive.
+- **Accounts and trip sync** — email/password accounts, rotating refresh
+  tokens, and last-write-wins trip history sync across devices.
+- **Content delivery** — personas and the joke bank served over HTTP with
+  ETags, so new material ships without an App Store release.
+
+It runs with no `ANTHROPIC_API_KEY` at all (serving the scripted bank), and
+`npm test` covers 122 cases without making a network call.
+
+**The iOS app does not call it yet** — the Swift side has no networking
+layer. Wiring the two together is the next step; see the "Not done" section
+of the backend README.
 
 ## Landing page
 

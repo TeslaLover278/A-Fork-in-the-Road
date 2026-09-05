@@ -40,6 +40,9 @@ const BLOCKED_TERMS = [
   "kill yourself", "kys", "suicide", "rape",
 ];
 
+/** Compiled once — screenLine runs on every generated line. */
+const BLOCKED_PATTERNS = BLOCKED_TERMS.map((term) => new RegExp(`\\b${term}\\b`, "i"));
+
 export type RejectionReason =
   | "empty"
   | "too_long"
@@ -47,11 +50,24 @@ export type RejectionReason =
   | "blocked_term"
   | "meta_commentary";
 
-/** Signs the model answered *about* the task instead of performing it. */
+/**
+ * Signs the model answered *about* the task instead of performing it.
+ *
+ * These have to be narrow. A bare "starts with okay/sure" rule looks
+ * reasonable and is wrong: Dez opens lines with "Okay." constantly, and it
+ * silently rejected two shipped bank lines. Match the preamble *shape* — a
+ * filler opener leading into an offer, or a line that names its own output —
+ * not the filler word alone.
+ */
 const META_PATTERNS = [
-  /^(sure|okay|here('s| is)|certainly|of course)\b/i,
-  /\b(as an ai|language model|i cannot|i can't help)\b/i,
-  /^(dez|vale)\s*:/i, // speaker labels — the persona is already structured
+  // "Sure! Here you go:" / "Okay, let me write..." — but not "Okay. Okay okay
+  // okay." because the gap can't cross a sentence boundary.
+  /^(sure|okay|certainly|of course|absolutely)\b[^.!?]{0,20}\b(here|i'?ll|let me|i can)\b/i,
+  // Text that describes its own output rather than being it.
+  /\bhere (are|is|'s)\b[^.!?]{0,40}\b(lines?|banter|exchange|options?|dialogue)\b/i,
+  /\b(as an ai|language model|i cannot|i can't help with)\b/i,
+  // Speaker labels — the persona is already carried structurally.
+  /^(dez|vale)\s*:/i,
 ];
 
 export function screenLine(text: string): { ok: true; text: string } | { ok: false; reason: RejectionReason } {
@@ -60,11 +76,10 @@ export function screenLine(text: string): { ok: true; text: string } | { ok: fal
   if (trimmed.length === 0) return { ok: false, reason: "empty" };
   if (trimmed.length > MAX_LINE_LENGTH) return { ok: false, reason: "too_long" };
 
-  const lower = trimmed.toLowerCase();
-  // Word-boundary matched so "Scunthorpe" problems don't drop clean lines.
-  for (const term of BLOCKED_TERMS) {
-    const pattern = new RegExp(`\b${term.replace(/[.*+?^${}()|[\]\]/g, "\$&")}\b`, "i");
-    if (pattern.test(lower)) return { ok: false, reason: "blocked_term" };
+  // Word-boundary matched, so the "Scunthorpe problem" doesn't drop clean
+  // lines. Terms are plain words by construction — nothing to escape.
+  for (const pattern of BLOCKED_PATTERNS) {
+    if (pattern.test(trimmed)) return { ok: false, reason: "blocked_term" };
   }
 
   for (const pattern of NAVIGATION_IMPERATIVES) {

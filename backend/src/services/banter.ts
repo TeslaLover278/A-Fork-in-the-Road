@@ -1,7 +1,10 @@
 import crypto from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { z } from "zod";
+// zodOutputFormat needs a Zod v4 schema. The rest of the app validates with
+// the v3 API (schemas.ts), so this imports the v4 surface zod 3.25 ships
+// alongside it rather than migrating every request schema for one call site.
+import { z } from "zod/v4";
 import { config } from "../config.js";
 import type { DB } from "../db/index.js";
 import { getPersona, type Persona } from "../content/personas.js";
