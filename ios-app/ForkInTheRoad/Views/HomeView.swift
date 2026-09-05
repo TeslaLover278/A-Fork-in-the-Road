@@ -20,6 +20,7 @@ struct HomeView: View {
     @State private var preview: RoutePreview?
     @State private var previewTask: Task<Void, Never>?
     @State private var namingTask: Task<Void, Never>?
+    @Namespace private var mapScope
 
     private var hasLocationFix: Bool { locationService.currentLocation != nil }
 
@@ -27,6 +28,7 @@ struct HomeView: View {
         ZStack(alignment: .top) {
             map
             topControls
+            locationButton
             if let destination {
                 destinationCard(for: destination)
             } else {
@@ -47,7 +49,7 @@ struct HomeView: View {
 
     private var map: some View {
         MapReader { proxy in
-            Map(position: $cameraPosition) {
+            Map(position: $cameraPosition, scope: mapScope) {
                 UserAnnotation()
                 if let destination {
                     Marker(destination.name, systemImage: "mappin", coordinate: destination.coordinate)
@@ -55,9 +57,9 @@ struct HomeView: View {
                 }
             }
             .mapControls {
-                MapUserLocationButton()
                 MapCompass()
             }
+            .mapScope(mapScope)
             // Pan and zoom are drag and pinch gestures, so a discrete tap
             // doesn't fight them — this only fires on a real tap.
             .onTapGesture { point in
@@ -68,6 +70,20 @@ struct HomeView: View {
                 visibleRegion = context.region
             }
             .ignoresSafeArea()
+        }
+    }
+
+    /// Sits directly under the search bar rather than in MapKit's default
+    /// top-trailing spot, so it doesn't compete with the compass there.
+    private var locationButton: some View {
+        VStack {
+            HStack {
+                Spacer()
+                MapUserLocationButton(scope: mapScope)
+                    .padding(.trailing)
+            }
+            .padding(.top, 64)
+            Spacer()
         }
     }
 

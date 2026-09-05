@@ -19,9 +19,11 @@ struct ContentView: View {
     init() {
         let settings = BanterSettings()
         let queue = SpeechQueueManager()
+        let units = UnitSettings()
         _banterSettings = StateObject(wrappedValue: settings)
         _speechQueue = StateObject(wrappedValue: queue)
-        _banterEngine = StateObject(wrappedValue: BanterEngine(settings: settings, speechQueue: queue))
+        _unitSettings = StateObject(wrappedValue: units)
+        _banterEngine = StateObject(wrappedValue: BanterEngine(settings: settings, speechQueue: queue, unitSettings: units))
     }
 
     var body: some View {

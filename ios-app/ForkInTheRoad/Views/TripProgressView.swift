@@ -16,7 +16,7 @@ struct TripProgressView: View {
             }
             .padding(.vertical, 12)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, maxHeight: 120)
+            .frame(maxWidth: .infinity, maxHeight: 80)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
         }
     }

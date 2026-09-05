@@ -57,26 +57,10 @@ extension BanterLineBank {
             "I've got a good feeling about this drive. I always do."
         ])
 
-        add("dez", .upcomingTurn, [
-            "Turn coming up. This is the part where everything could go wrong.",
-            "Okay, stay focused, there's a turn approaching and my heart cannot handle surprises.",
-            "This next turn looks tighter than the last one. I don't love it.",
-            "I'm just going to close my eyes for this next part. Kidding. Unless.",
-            "Here it comes. The turn. THE turn.",
-            "I hope whoever designed this intersection is proud of themselves.",
-            "Slow down, slow down, SLOW— okay, you're fine, you're fine.",
-            "This is a lot of turn for one road."
-        ])
-        add("vale", .upcomingTurn, [
-            "Oh, this turn? Child's play. Watch this.",
-            "I saw this turn coming a mile away. Literally, there's a sign.",
-            "Handle this one smooth. Make it look effortless. Like me.",
-            "This is exactly where I'd turn if I were, you know, always right.",
-            "Easy turn. I've made harder decisions picking a lunch spot.",
-            "Watch and learn, Dez. This is what confidence looks like.",
-            "Nailed it before we even took it. That's just how I operate.",
-            "This turn doesn't stand a chance against us."
-        ])
+        // .upcomingTurn has no static lines: the turn itself is delivered by
+        // DirectionAnnouncementBank's templates instead, since that content
+        // needs to embed the real instruction and distance. See
+        // BanterEngine.announceManeuver.
 
         add("dez", .rerouting, [
             "Wait, WAIT. Are we off course? Are we lost? Is this a whole thing now?",

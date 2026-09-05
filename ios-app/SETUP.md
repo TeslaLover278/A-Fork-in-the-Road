@@ -42,17 +42,23 @@ not install XcodeGen, the manual route is below.
 ## 2. Replace the generated files with these
 
 1. In the new project, delete the generated `ContentView.swift` (keep
-   `ForkInTheRoadApp.swift` for now, you'll overwrite it).
+   `ForkInTheRoadApp.swift` for now, you'll overwrite it) and delete
+   Xcode's auto-generated `Assets.xcassets` — this repo ships its own with
+   the app icon already in it, and having two catalogs both define
+   "AppIcon" is a build error.
 2. Drag the `ForkInTheRoad/` folder from this repo (everything inside
    `ios-app/ForkInTheRoad/` — `Models/`, `Services/`, `Content/`, `Views/`,
-   and `ForkInTheRoadApp.swift`) into the Xcode project navigator, dropped
-   onto the project's root group.
+   `Assets.xcassets`, and `ForkInTheRoadApp.swift`) into the Xcode project
+   navigator, dropped onto the project's root group.
    - When prompted, choose **Copy items if needed** and **Create groups**
      (not folder references), and make sure the app target's checkbox is
      ticked for every file.
 3. Delete Xcode's auto-generated `ForkInTheRoadApp.swift` if it's still
    present and conflicts with the one you just added (only one `@main`
    struct is allowed).
+4. Under the target's **General > App Icons and Launch Screen**, confirm
+   **App Icon Source** is set to `AppIcon` (it should be, since that's the
+   only icon set in the catalog now).
 
 ## 3. Add the Info.plist keys
 

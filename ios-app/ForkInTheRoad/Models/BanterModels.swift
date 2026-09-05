@@ -74,12 +74,19 @@ final class BanterSettings: ObservableObject {
     @Published var showCaptions: Bool {
         didSet { UserDefaults.standard.set(showCaptions, forKey: Keys.showCaptions) }
     }
+    /// When on, turns are read out in the plain navigation voice like a
+    /// normal maps app. When off (the default), Dez and Vale deliver the
+    /// turn themselves instead — see `BanterEngine.announceManeuver`.
+    @Published var realDirectionsEnabled: Bool {
+        didSet { UserDefaults.standard.set(realDirectionsEnabled, forKey: Keys.realDirections) }
+    }
 
     private enum Keys {
         static let frequency = "banter.frequency"
         static let muted = "banter.mutedPersonaIDs"
         static let rate = "banter.speechRateMultiplier"
         static let showCaptions = "banter.showCaptions"
+        static let realDirections = "banter.realDirectionsEnabled"
     }
 
     init() {
@@ -88,6 +95,7 @@ final class BanterSettings: ObservableObject {
         mutedPersonaIDs = Set(defaults.stringArray(forKey: Keys.muted) ?? [])
         speechRateMultiplier = defaults.object(forKey: Keys.rate) as? Double ?? 1.0
         showCaptions = defaults.object(forKey: Keys.showCaptions) as? Bool ?? true
+        realDirectionsEnabled = defaults.object(forKey: Keys.realDirections) as? Bool ?? false
     }
 
     func isMuted(_ persona: VoicePersona) -> Bool {
@@ -100,5 +108,13 @@ final class BanterSettings: ObservableObject {
         } else {
             mutedPersonaIDs.insert(persona.id)
         }
+    }
+
+    /// True whenever there's nobody available to deliver a turn as banter —
+    /// the user asked for the plain voice, muted every character, or turned
+    /// banter off outright. Silence on a turn is never an option, so this is
+    /// the single place that decides when to fall back to the real voice.
+    var mustUseRealDirections: Bool {
+        realDirectionsEnabled || frequency == .off || VoicePersona.all.allSatisfy(isMuted)
     }
 }

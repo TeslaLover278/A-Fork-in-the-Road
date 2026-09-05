@@ -1,9 +1,14 @@
 import Foundation
+import CoreLocation
 
 /// Decides *when* and *what* comedic banter fires. This is intentionally
 /// dumb about routing — it only reacts to NavigationEvents it's handed and
 /// pushes finished lines into SpeechQueueManager's low-priority banter lane,
 /// which is what actually guarantees banter can't step on real directions.
+///
+/// Turns are the one exception to "just flavor": by default Dez and Vale
+/// *are* how a turn gets spoken — see `announceManeuver` — with the plain
+/// navigation voice only as a fallback (`BanterSettings.mustUseRealDirections`).
 @MainActor
 final class BanterEngine: ObservableObject {
     @Published private(set) var currentCaption: (personaID: String, text: String)?
@@ -11,6 +16,7 @@ final class BanterEngine: ObservableObject {
     private let settings: BanterSettings
     private let speechQueue: SpeechQueueManager
     private let lineBank: BanterLineBank
+    private let unitSettings: UnitSettings
 
     private var lastFired: [BanterCategory: Date] = [:]
     private var recentLineIDs: [UUID] = []
@@ -18,9 +24,15 @@ final class BanterEngine: ObservableObject {
     private var hasFiredTripStart = false
     private var hasFiredArrival = false
 
-    init(settings: BanterSettings, speechQueue: SpeechQueueManager, lineBank: BanterLineBank = .shared) {
+    /// Avoid picking the same direction-announcement template twice in a row.
+    private var lastDezAnnouncementIndex: Int?
+    private var lastValeRebuttalIndex: Int?
+    private var lastValeSoloAnnouncementIndex: Int?
+
+    init(settings: BanterSettings, speechQueue: SpeechQueueManager, unitSettings: UnitSettings, lineBank: BanterLineBank = .shared) {
         self.settings = settings
         self.speechQueue = speechQueue
+        self.unitSettings = unitSettings
         self.lineBank = lineBank
     }
 
@@ -41,8 +53,9 @@ final class BanterEngine: ObservableObject {
             guard !hasFiredTripStart else { return }
             hasFiredTripStart = true
             fireExchange(for: .tripStart)
-        case .approachingManeuver:
-            fireExchange(for: .upcomingTurn)
+        case .approachingManeuver(let step, let distanceRemaining):
+            guard !settings.mustUseRealDirections else { return } // real voice already covers this maneuver
+            announceManeuver(step: step, distanceRemaining: distanceRemaining)
         case .wentOffRoute, .rerouted:
             fireExchange(for: .rerouting)
         case .arrived:
@@ -87,6 +100,41 @@ final class BanterEngine: ObservableObject {
         enqueue(lines)
     }
 
+    /// The default way a turn is spoken: Dez states the real instruction,
+    /// then Vale disagrees with him — never with the turn itself, since two
+    /// characters giving conflicting real directions would be dangerous, not
+    /// funny. Unlike `fireExchange`, this always fires; a turn isn't optional
+    /// flavor, it's the thing the driver needs to hear.
+    private func announceManeuver(step: RouteStepInfo, distanceRemaining: CLLocationDistance) {
+        let activePersonas = VoicePersona.all.filter { !settings.isMuted($0) }
+        guard !activePersonas.isEmpty else { return }
+        let hasDez = activePersonas.contains { $0.id == "dez" }
+        let hasVale = activePersonas.contains { $0.id == "vale" }
+
+        let distance = unitSettings.spokenDistance(distanceRemaining)
+        var lines: [BanterLine] = []
+
+        if hasDez {
+            let template = DirectionAnnouncementBank.dezAnnouncements.pickAvoiding(&lastDezAnnouncementIndex)
+            let text = DirectionAnnouncementBank.fill(template, distance: distance, instruction: step.instructions)
+            lines.append(BanterLine(personaID: "dez", category: .upcomingTurn, text: text))
+
+            if hasVale {
+                let rebuttal = DirectionAnnouncementBank.valeRebuttals.pickAvoiding(&lastValeRebuttalIndex)
+                lines.append(BanterLine(personaID: "vale", category: .upcomingTurn, text: rebuttal))
+            }
+        } else if hasVale {
+            // Dez is muted — Vale has to deliver the actual instruction
+            // herself rather than the turn going unspoken.
+            let template = DirectionAnnouncementBank.valeSoloAnnouncements.pickAvoiding(&lastValeSoloAnnouncementIndex)
+            let text = DirectionAnnouncementBank.fill(template, distance: distance, instruction: step.instructions)
+            lines.append(BanterLine(personaID: "vale", category: .upcomingTurn, text: text))
+        }
+
+        guard !lines.isEmpty else { return }
+        enqueue(lines)
+    }
+
     private func enqueue(_ lines: [BanterLine]) {
         for line in lines {
             guard let persona = VoicePersona.all.first(where: { $0.id == line.personaID }) else { continue }
@@ -105,5 +153,22 @@ final class BanterEngine: ObservableObject {
             )
             speechQueue.enqueueBanter(request)
         }
+    }
+}
+
+private extension Array where Element == String {
+    /// A random element, steering away from whichever index was picked last
+    /// so a template doesn't repeat back-to-back on consecutive turns.
+    func pickAvoiding(_ lastIndex: inout Int?) -> String {
+        guard count > 1 else {
+            lastIndex = indices.first
+            return first ?? ""
+        }
+        var index = Int.random(in: indices)
+        if index == lastIndex {
+            index = (index + 1) % count
+        }
+        lastIndex = index
+        return self[index]
     }
 }
