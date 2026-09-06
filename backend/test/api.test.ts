@@ -50,7 +50,7 @@ describe("health & content", () => {
     const personas = await app.inject({ method: "GET", url: "/v1/content/personas" });
     expect(personas.statusCode).toBe(200);
     const ids = personas.json().personas.map((p: { id: string }) => p.id);
-    expect(ids).toEqual(["dez", "vale"]);
+    expect(ids).toEqual(["dan", "harry"]);
   });
 
   it("never leaks the server-only generation prompt to clients", async () => {
@@ -374,8 +374,8 @@ describe("banter", () => {
     expect(body.source).toBe("bank");
     expect(body.fallbackReason).toBe("no_api_key");
     expect(body.lines).toHaveLength(2);
-    expect(body.lines[0].personaId).toBe("dez");
-    expect(body.lines[1].personaId).toBe("vale");
+    expect(body.lines[0].personaId).toBe("dan");
+    expect(body.lines[1].personaId).toBe("harry");
     for (const line of body.lines) {
       expect(typeof line.text).toBe("string");
       expect(line.text.length).toBeGreaterThan(0);
@@ -395,21 +395,21 @@ describe("banter", () => {
     const res = await app.inject({
       method: "POST",
       url: "/v1/banter",
-      payload: { category: "arrival", personaIds: ["vale"], lineCount: 3 },
+      payload: { category: "arrival", personaIds: ["harry"], lineCount: 3 },
     });
 
     const personaIds = res.json().lines.map((l: { personaId: string }) => l.personaId);
-    expect(new Set(personaIds)).toEqual(new Set(["vale"]));
+    expect(new Set(personaIds)).toEqual(new Set(["harry"]));
   });
 
   it("avoids lines the client has recently played", async () => {
-    const all = LINE_BANK.filter((l) => l.personaId === "dez" && l.category === "arrival");
+    const all = LINE_BANK.filter((l) => l.personaId === "dan" && l.category === "arrival");
     const exclude = all.slice(0, all.length - 1).map((l) => l.id);
 
     const res = await app.inject({
       method: "POST",
       url: "/v1/banter",
-      payload: { category: "arrival", personaIds: ["dez"], lineCount: 1, excludeLineIds: exclude },
+      payload: { category: "arrival", personaIds: ["dan"], lineCount: 1, excludeLineIds: exclude },
     });
 
     expect(res.json().lines[0].lineId).toBe(all[all.length - 1]!.id);

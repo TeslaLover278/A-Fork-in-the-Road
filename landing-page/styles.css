@@ -6,8 +6,8 @@
   --rule: #e6e4df;
   --accent: #ff5d3a;
   --accent-ink: #ffffff;
-  --dez: #ff5d3a;
-  --vale: #6a4cff;
+  --dan: #ff5d3a;
+  --harry: #6a4cff;
   --shadow: 0 20px 50px -25px rgba(20, 20, 25, 0.35);
 }
 
@@ -179,8 +179,8 @@ h1 {
 .chevron { fill: none; stroke: #1a1a1e; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 
 .caption-card { fill: #f4f1ff; }
-.dot-vale { fill: var(--vale); }
-.caption-name { font: 700 11px -apple-system, sans-serif; fill: var(--vale); }
+.dot-harry { fill: var(--harry); }
+.caption-name { font: 700 11px -apple-system, sans-serif; fill: var(--harry); }
 .caption-text { font: 400 11px -apple-system, sans-serif; fill: #33313d; }
 
 /* ---------- sections ---------- */
@@ -262,8 +262,8 @@ h1 {
   border-top: 4px solid transparent;
 }
 
-.cast-dez { border-top-color: var(--dez); }
-.cast-vale { border-top-color: var(--vale); }
+.cast-dan { border-top-color: var(--dan); }
+.cast-harry { border-top-color: var(--harry); }
 
 .cast-avatar {
   font-size: 40px;

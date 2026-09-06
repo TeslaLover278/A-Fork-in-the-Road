@@ -6,6 +6,10 @@ enum BanterCategory: String, CaseIterable, Codable, Hashable {
     case rerouting
     case arrival
     case idleChatter
+    /// Reserved for a future live-traffic trigger. Clips exist for it
+    /// (BanterAudioBank) but nothing fires it yet — the app has no traffic
+    /// data source to react to.
+    case trafficComment
 }
 
 struct BanterLine: Identifiable {
@@ -44,6 +48,8 @@ enum BanterFrequency: String, CaseIterable, Identifiable, Codable, Hashable {
             return self == .chatty ? 25 : 90
         case .rerouting:
             return self == .chatty ? 5 : 20
+        case .trafficComment:
+            return .infinity // not wired to a live trigger yet
         }
     }
 
@@ -75,7 +81,7 @@ final class BanterSettings: ObservableObject {
         didSet { UserDefaults.standard.set(showCaptions, forKey: Keys.showCaptions) }
     }
     /// When on, turns are read out in the plain navigation voice like a
-    /// normal maps app. When off (the default), Dez and Vale deliver the
+    /// normal maps app. When off (the default), Dan and Harry deliver the
     /// turn themselves instead — see `BanterEngine.announceManeuver`.
     @Published var realDirectionsEnabled: Bool {
         didSet { UserDefaults.standard.set(realDirectionsEnabled, forKey: Keys.realDirections) }

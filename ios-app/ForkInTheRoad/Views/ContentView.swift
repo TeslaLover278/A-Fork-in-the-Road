@@ -93,7 +93,7 @@ struct ContentView: View {
     /// preempts any banter in progress — that's the whole guarantee.
     ///
     /// Turns are the exception: by default the plain instruction below is
-    /// skipped entirely and Dez/Vale deliver the turn themselves (see
+    /// skipped entirely and Dan/Harry deliver the turn themselves (see
     /// `BanterEngine.announceManeuver`), unless the user turned on real
     /// directions in Settings — `mustUseRealDirections` covers that toggle
     /// plus the cases where there's simply nobody left to say it.
@@ -126,14 +126,28 @@ private struct NavigationScreen: View {
     let onMenu: () -> Void
     let onEnd: () -> Void
 
+    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
+
     var body: some View {
         ZStack(alignment: .top) {
-            NavigationMapView(navigationEngine: navigationEngine)
+            NavigationMapView(navigationEngine: navigationEngine, cameraPosition: $cameraPosition)
                 .ignoresSafeArea()
 
             VStack {
                 TurnBannerView(navigationEngine: navigationEngine, unitSettings: unitSettings)
                 Spacer()
+                // In the layout flow rather than pinned to the map's edge, so
+                // it always lands just above the caption/trip card no matter
+                // how tall those grow — and stays out of the vertical middle,
+                // where it sat over the road ahead.
+                if cameraPosition.hasBeenMovedByUser {
+                    HStack {
+                        Spacer()
+                        RecenterButton(action: recenter)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 10)
+                }
                 if banterSettings.showCaptions, let caption = banterEngine.currentCaption {
                     BanterCaptionView(personaID: caption.personaID, text: caption.text)
                         .padding(.bottom, 8)
@@ -143,6 +157,7 @@ private struct NavigationScreen: View {
                     .padding(.bottom, 24)
             }
             .padding(.top, 8)
+            .animation(.easeInOut(duration: 0.2), value: cameraPosition.hasBeenMovedByUser)
 
             VStack {
                 HStack {
@@ -161,6 +176,15 @@ private struct NavigationScreen: View {
                 .padding()
                 Spacer()
             }
+        }
+    }
+
+    /// Hands the camera back to MapKit's user-location tracking. Mid-drive
+    /// this matters more than on the home map — dragging the map back by hand
+    /// is exactly the fiddling we don't want happening at the wheel.
+    private func recenter() {
+        withAnimation(.easeInOut(duration: 0.35)) {
+            cameraPosition = .userLocation(fallback: .automatic)
         }
     }
 }

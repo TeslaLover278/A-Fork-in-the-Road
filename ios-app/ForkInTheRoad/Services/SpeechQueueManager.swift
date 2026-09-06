@@ -6,8 +6,17 @@ enum SpeechLane: Equatable {
     case banter
 }
 
+/// What a `SpeechRequest` actually plays. `.text` goes through `SpeechScript`
+/// and `AVSpeechSynthesizer`, same as before; `.audioClip` plays a bundled
+/// recording through `AVAudioPlayer` instead — no clause splitting, since a
+/// recorded line already has its performance baked in.
+enum SpeechContent {
+    case text(String)
+    case audioClip(resourceName: String, fileExtension: String)
+}
+
 struct SpeechRequest {
-    let text: String
+    let content: SpeechContent
     let persona: VoicePersona?
     let rateMultiplier: Double
     let onStart: (() -> Void)?
@@ -49,6 +58,10 @@ final class SpeechQueueManager: NSObject, ObservableObject {
     /// delivery and still owns the banter lane.
     private var pendingFragments: [AVSpeechUtterance] = []
 
+    /// The player for a banter line that's a recorded clip rather than TTS.
+    /// Held only while one is actually playing.
+    private var audioPlayer: AVAudioPlayer?
+
     /// The utterance currently owning the navigation lane. Held by identity
     /// so the delegate callbacks can tell a finished/cancelled *navigation*
     /// utterance apart from a banter one — they share one synthesizer.
@@ -72,6 +85,10 @@ final class SpeechQueueManager: NSObject, ObservableObject {
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .word)
         }
+        if let player = audioPlayer, player.isPlaying {
+            player.stop()
+        }
+        audioPlayer = nil
         banterQueue.removeAll()
         pendingFragments.removeAll()
         currentBanterFinishHandler = nil
@@ -105,8 +122,12 @@ final class SpeechQueueManager: NSObject, ObservableObject {
             if synthesizer.isSpeaking {
                 synthesizer.stopSpeaking(at: .word)
             }
+            if let player = audioPlayer, player.isPlaying {
+                player.stop()
+            }
             currentLane = nil
         }
+        audioPlayer = nil
         banterQueue.removeAll()
         pendingFragments.removeAll()
         currentBanterFinishHandler = nil
@@ -120,28 +141,61 @@ final class SpeechQueueManager: NSObject, ObservableObject {
         guard currentLane == nil, !synthesizer.isSpeaking, !banterQueue.isEmpty else { return }
         let next = banterQueue.removeFirst()
 
+        switch next.content {
+        case .text(let text):
+            playTextBanter(text, request: next)
+        case .audioClip(let resourceName, let fileExtension):
+            playAudioClipBanter(resourceName: resourceName, fileExtension: fileExtension, request: next)
+        }
+    }
+
+    private func playTextBanter(_ text: String, request: SpeechRequest) {
         let fragments = SpeechScript.utterances(
-            for: next.text,
-            persona: next.persona,
-            rateMultiplier: next.rateMultiplier
+            for: text,
+            persona: request.persona,
+            rateMultiplier: request.rateMultiplier
         )
         // An empty or punctuation-only line has nothing to perform. Report it
         // as finished so callers aren't left waiting on a line that never
         // starts, and move on to the next one.
         guard !fragments.isEmpty else {
-            next.onFinish?()
+            request.onFinish?()
             playNextBanterIfIdle()
             return
         }
 
         currentLane = .banter
         isSpeakingBanter = true
-        activePersonaID = next.persona?.id
-        currentBanterFinishHandler = next.onFinish
-        next.onStart?()
+        activePersonaID = request.persona?.id
+        currentBanterFinishHandler = request.onFinish
+        request.onStart?()
 
         pendingFragments = fragments
         speakNextFragment()
+    }
+
+    /// A missing/unloadable resource is treated the same as an empty text
+    /// line above: report it finished and move on, rather than stalling the
+    /// queue on a file that was never bundled.
+    private func playAudioClipBanter(resourceName: String, fileExtension: String, request: SpeechRequest) {
+        guard let url = Bundle.main.url(forResource: resourceName, withExtension: fileExtension),
+              let player = try? AVAudioPlayer(contentsOf: url) else {
+            request.onFinish?()
+            playNextBanterIfIdle()
+            return
+        }
+
+        currentLane = .banter
+        isSpeakingBanter = true
+        activePersonaID = request.persona?.id
+        currentBanterFinishHandler = request.onFinish
+        request.onStart?()
+
+        player.delegate = self
+        player.enableRate = true
+        player.rate = min(2.0, max(0.5, Float(request.rateMultiplier)))
+        audioPlayer = player
+        player.play()
     }
 
     /// Hands the next clause of the current line to the synthesizer. Clauses
@@ -196,6 +250,20 @@ final class SpeechQueueManager: NSObject, ObservableObject {
             currentLane = nil
         }
     }
+
+    /// A clip finishing naturally. `stop()` from `speakNavigation`/
+    /// `stopAllBanter` does not trigger this delegate callback, so unlike
+    /// `handleCancelled` this path only ever sees a completed line.
+    fileprivate func handleAudioClipFinished() {
+        audioPlayer = nil
+        guard currentLane == .banter else { return }
+        currentBanterFinishHandler?()
+        currentBanterFinishHandler = nil
+        isSpeakingBanter = false
+        activePersonaID = nil
+        currentLane = nil
+        playNextBanterIfIdle()
+    }
 }
 
 extension SpeechQueueManager: AVSpeechSynthesizerDelegate {
@@ -205,5 +273,11 @@ extension SpeechQueueManager: AVSpeechSynthesizerDelegate {
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
         Task { @MainActor in self.handleCancelled(utterance) }
+    }
+}
+
+extension SpeechQueueManager: AVAudioPlayerDelegate {
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in self.handleAudioClipFinished() }
     }
 }

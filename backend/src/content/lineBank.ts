@@ -29,14 +29,14 @@ export interface BankLine {
 }
 
 const RAW: Record<string, Record<BanterCategory, string[]>> = {
-  dez: {
+  dan: {
     tripStart: [
       "Okay. Okay okay okay. We're doing this. Everybody stay calm.",
       "New trip, new opportunities for something to go horribly wrong.",
       "I've already found four things to worry about and we haven't left the driveway.",
       "Seatbelts, check. Snacks, check. My will to live, questionable.",
       "Statistically speaking, most drives end fine. Most.",
-      "I read that this route has a stop sign. A STOP sign, Vale.",
+      "I read that this route has a stop sign. A STOP sign, Harry.",
       "Here we go. I'll be narrating the whole thing, just so there's a record.",
       "Deep breaths. We can do this. Probably.",
       "I already don't like the look of that sky.",
@@ -76,9 +76,9 @@ const RAW: Record<string, Record<BanterCategory, string[]>> = {
       "I've started narrating the scenery to stay calm. There's a tree. Another tree.",
     ],
   },
-  vale: {
+  harry: {
     tripStart: [
-      "Relax, Dez. I've driven this exact route in my head a thousand times.",
+      "Relax, Dan. I've driven this exact route in my head a thousand times.",
       "Called it. We're going. I said we'd go and here we are.",
       "This is going to be the smoothest drive of your life. You're welcome in advance.",
       "I don't do nervous. I do 'in control.'",
@@ -86,7 +86,7 @@ const RAW: Record<string, Record<BanterCategory, string[]>> = {
       "Let the record show I predicted clear roads today.",
       "Buckle up, sure, but mostly because I drive like a legend.",
       "We're basically already there. Vibes.",
-      "Dez, breathe. One of us has to be the calm one, and it's obviously me.",
+      "Dan, breathe. One of us has to be the calm one, and it's obviously me.",
       "I've got a good feeling about this drive. I always do.",
     ],
     upcomingTurn: [
@@ -95,7 +95,7 @@ const RAW: Record<string, Record<BanterCategory, string[]>> = {
       "Handle this one smooth. Make it look effortless. Like me.",
       "This is exactly where I'd turn if I were, you know, always right.",
       "Easy turn. I've made harder decisions picking a lunch spot.",
-      "Watch and learn, Dez. This is what confidence looks like.",
+      "Watch and learn, Dan. This is what confidence looks like.",
       "Nailed it before we even took it. That's just how I operate.",
       "This turn doesn't stand a chance against us.",
     ],
@@ -108,7 +108,7 @@ const RAW: Record<string, Record<BanterCategory, string[]>> = {
       "See, this is why you trust the process. My process.",
     ],
     arrival: [
-      "And that, Dez, is how it's done.",
+      "And that, Dan, is how it's done.",
       "Arrived exactly on schedule, exactly as I predicted.",
       "Another flawless drive in a long line of flawless drives.",
       "You can applaud now. I'll wait.",
@@ -126,7 +126,7 @@ const RAW: Record<string, Record<BanterCategory, string[]>> = {
 };
 
 /**
- * Ids are stable and content-derived (`dez.tripStart.0`) rather than random,
+ * Ids are stable and content-derived (`dan.tripStart.0`) rather than random,
  * so a client can cache a bank, re-fetch it later, and still recognise which
  * lines it has recently played.
  */

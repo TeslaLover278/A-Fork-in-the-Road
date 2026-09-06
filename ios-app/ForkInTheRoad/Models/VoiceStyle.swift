@@ -72,7 +72,7 @@ struct VoiceStyle: Equatable {
     /// of a phrase on top of dropping the pitch.
     var finalRate: Float
 
-    /// Dez: fast, high, jittery. Rushes through clauses, spikes on anything
+    /// Dan: fast, high, jittery. Rushes through clauses, spikes on anything
     /// alarming, and never really lands the end of a sentence.
     static let anxious = VoiceStyle(
         baseRate: 1.14,
@@ -99,8 +99,8 @@ struct VoiceStyle: Equatable {
         finalRate: 0.92
     )
 
-    /// Vale: slow, low, unbothered. Emphasis makes her go *quieter and
-    /// slower* rather than louder — the deadpan read — and she takes a real
+    /// Harry: slow, low, unbothered. Emphasis makes him go *quieter and
+    /// slower* rather than louder — the deadpan read — and he takes a real
     /// beat before the last clause of anything.
     static let smug = VoiceStyle(
         baseRate: 1.17,

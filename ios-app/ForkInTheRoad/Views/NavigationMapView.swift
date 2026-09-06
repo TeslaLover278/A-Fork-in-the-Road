@@ -3,7 +3,10 @@ import MapKit
 
 struct NavigationMapView: View {
     @ObservedObject var navigationEngine: NavigationEngine
-    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
+    /// Owned by NavigationScreen so the recenter button can live in that
+    /// screen's overlay stack, where it can be positioned against the turn
+    /// banner and trip card instead of floating over the bare map.
+    @Binding var cameraPosition: MapCameraPosition
     @Namespace private var mapScope
 
     var body: some View {
@@ -15,24 +18,5 @@ struct NavigationMapView: View {
             }
         }
         .mapScope(mapScope)
-        // Mid-trailing edge: the turn banner (top), banter caption, and
-        // TripProgressView (bottom) are all full-width and vary in height,
-        // so any fixed top/bottom offset risks getting covered by one of them.
-        .overlay(alignment: .trailing) {
-            if cameraPosition.hasBeenMovedByUser {
-                RecenterButton(action: recenter)
-                    .padding(.trailing, 16)
-            }
-        }
-        .animation(.easeInOut(duration: 0.2), value: cameraPosition.hasBeenMovedByUser)
-    }
-
-    /// Hands the camera back to MapKit's user-location tracking. Mid-drive
-    /// this matters more than on the home map — glancing away from the road
-    /// to drag the map back is the thing we're trying to avoid.
-    private func recenter() {
-        withAnimation(.easeInOut(duration: 0.35)) {
-            cameraPosition = .userLocation(fallback: .automatic)
-        }
     }
 }

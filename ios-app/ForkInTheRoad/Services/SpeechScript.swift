@@ -143,7 +143,7 @@ enum SpeechScript {
     }
 
     /// Folds a very short comma-clause into the one after it. Splitting
-    /// "Relax, Dez." into two utterances puts an audible gap after one word
+    /// "Relax, Dan." into two utterances puts an audible gap after one word
     /// and sounds stilted; the comma is still worth a beat inside a longer
     /// run, just not its own breath.
     private static func merged(_ clauses: [Clause]) -> [Clause] {

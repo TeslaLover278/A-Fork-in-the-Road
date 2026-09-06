@@ -2,7 +2,7 @@
 
 Node + TypeScript (Fastify, SQLite) service behind the iOS app. Three jobs:
 
-1. **Generated banter** — fresh Dez/Vale lines from the Claude API, in place of
+1. **Generated banter** — fresh Dan/Harry lines from the Claude API, in place of
    the fixed scripted bank.
 2. **Accounts + trip sync** — email/password accounts and trip history synced
    across devices.
@@ -29,7 +29,7 @@ write something a human never would. So:
 The prompt is the request; the filter is the guarantee. The filter has its own
 test suite, including the assertion that every shipped bank line passes it —
 which is how the "starts with Okay" false positive that would have rejected two
-of Dez's real lines got caught.
+of Dan's real lines got caught.
 
 ## Nothing here can break the app
 
@@ -129,7 +129,7 @@ device at a time, because you are not driving two cars at once.
 // POST /v1/banter   — works signed out
 {
   "category": "upcomingTurn",       // tripStart | upcomingTurn | rerouting | arrival | idleChatter
-  "personaIds": ["dez", "vale"],    // unmuted personas, in speaking order
+  "personaIds": ["dan", "harry"],    // unmuted personas, in speaking order
   "lineCount": 2,                   // 1–4, matches BanterFrequency.exchangeLength
   "context": {
     "destinationName": "the airport",
@@ -138,7 +138,7 @@ device at a time, because you are not driving two cars at once.
     "rerouteCount": 2,
     "timeOfDay": "evening"
   },
-  "excludeLineIds": ["dez.arrival.1"],  // recently played, so fallback won't repeat
+  "excludeLineIds": ["dan.arrival.1"],  // recently played, so fallback won't repeat
   "allowGenerated": true                // false forces the bank
 }
 // → { source: "generated" | "generated_cached" | "bank",

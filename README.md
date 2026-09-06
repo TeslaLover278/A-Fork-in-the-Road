@@ -4,9 +4,9 @@ A turn-by-turn iOS navigation app that works like a normal maps app — live
 GPS tracking, real route display, automatic rerouting — except two comedic
 AI-voice personas ride along and bicker about the drive.
 
-- **Dez** — dramatic, paranoid, convinced every trip is a near-death
+- **Dan** — dramatic, paranoid, convinced every trip is a near-death
   experience.
-- **Vale** — smug, overconfident, has never once been wrong (by her own
+- **Harry** — smug, overconfident, has never once been wrong (by his own
   account).
 
 They have no effect on routing or logic. They just talk, and they never get
@@ -33,8 +33,8 @@ Xcode-GUI route is documented alongside it. In short:
   Each persona resolves to the best-quality installed variant of a named
   system voice (`Services/../VoiceCatalog`), and every line is cut at its
   punctuation and performed clause by clause — pitch, rate, volume and pauses
-  per clause, from a per-character profile in `Models/VoiceStyle.swift`. Dez
-  rushes and spikes; Vale drags and sits on a punchline. That prosody pass is
+  per clause, from a per-character profile in `Models/VoiceStyle.swift`. Dan
+  rushes and spikes; Harry drags and sits on a punchline. That prosody pass is
   what keeps them from sounding like one flat robot reading two scripts.
 - **Banter**: a scripted content bank (`Content/BanterLineBank.swift`) picked
   by a small rules engine (`Services/BanterEngine.swift`). This works fully
@@ -59,7 +59,7 @@ backend below is an enhancement layer, never a dependency.
 [`backend/README.md`](backend/README.md) for the full API and design notes.
 It does three things:
 
-- **Generated banter** — fresh Dez/Vale lines from the Claude API instead of
+- **Generated banter** — fresh Dan/Harry lines from the Claude API instead of
   the fixed script. Every generated line is re-checked server-side and
   rejected if it could be mistaken for a real driving instruction; anything
   filtered falls back to the scripted bank. `/v1/banter` never returns a

@@ -36,8 +36,8 @@ struct BanterCaptionView: View {
 
     private var color: Color {
         switch personaID {
-        case "dez": return .orange
-        case "vale": return .purple
+        case "dan": return .orange
+        case "harry": return .purple
         default: return .gray
         }
     }

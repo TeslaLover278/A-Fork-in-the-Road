@@ -14,7 +14,7 @@ struct SettingsView: View {
             } footer: {
                 Text(settings.realDirectionsEnabled
                      ? "Turns are read out in a plain voice, like a normal maps app."
-                     : "Turns are delivered by Dez and Vale instead of a plain voice — Dez calls out the turn, Vale disagrees with him about it. Turn this on for a plain, literal voice instead.")
+                     : "Turns are delivered by Dan and Harry instead of a plain voice — Dan calls out the turn, Harry disagrees with him about it. Turn this on for a plain, literal voice instead.")
             }
 
             Section("Banter frequency") {

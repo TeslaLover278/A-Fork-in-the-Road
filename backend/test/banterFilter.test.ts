@@ -71,7 +71,7 @@ describe("general screening", () => {
   });
 
   it("rejects the model answering about the task instead of doing it", () => {
-    for (const text of ["Sure! Here are two lines of banter.", "Dez: I don't like this at all."]) {
+    for (const text of ["Sure! Here are two lines of banter.", "Dan: I don't like this at all."]) {
       const result = screenLine(text);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.reason).toBe("meta_commentary");

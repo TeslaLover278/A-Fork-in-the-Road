@@ -29,9 +29,13 @@ struct VoicePersona: Identifiable, Equatable {
         VoiceCatalog.shared.voice(for: self)
     }
 
-    static let dez = VoicePersona(
-        id: "dez",
-        displayName: "Dez",
+    // Placeholder tagline/preview/style — Dan now speaks primarily from the
+    // recorded clips in BanterAudioBank, but the style/preview here still
+    // back the TTS fallback path (maneuvers with no matching clip). Update
+    // once Dan's actual personality is written.
+    static let dan = VoicePersona(
+        id: "dan",
+        displayName: "Dan",
         tagline: "Dramatic. Paranoid. Convinced every trip is a near-death experience.",
         style: .anxious,
         preferredVoiceNames: ["Tom", "Aaron", "Evan", "Alex", "Nathan", "Daniel"],
@@ -39,17 +43,23 @@ struct VoicePersona: Identifiable, Equatable {
         previewLine: "Okay. Okay okay okay. There's a turn coming up and I do NOT like the look of it."
     )
 
-    static let vale = VoicePersona(
-        id: "vale",
-        displayName: "Vale",
-        tagline: "Smug. Overconfident. Has never once been wrong, by her own account.",
+    // Placeholder tagline/preview/style — Harry has no recorded clips yet, so
+    // everything he says still goes through TTS using this. Update once
+    // Harry's actual personality is written and/or clips exist.
+    static let harry = VoicePersona(
+        id: "harry",
+        displayName: "Harry",
+        tagline: "Smug. Overconfident. Has never once been wrong, by his own account.",
         style: .smug,
-        preferredVoiceNames: ["Ava", "Zoe", "Samantha", "Allison", "Serena", "Karen", "Moira"],
-        preferredGender: .female,
-        previewLine: "Relax, Dez. I've driven this exact route in my head a thousand times... and I was right every single time."
+        // Deliberately a different list than Dan's — until Harry has his own
+        // recorded clips, this is the only thing keeping the two voices from
+        // sounding identical over TTS.
+        preferredVoiceNames: ["Fred", "Rocko", "Jester", "Albert", "Arthur"],
+        preferredGender: .male,
+        previewLine: "Relax, Dan. I've driven this exact route in my head a thousand times... and I was right every single time."
     )
 
-    static let all: [VoicePersona] = [.dez, .vale]
+    static let all: [VoicePersona] = [.dan, .harry]
 }
 
 /// Picks the actual system voice behind each persona, and remembers it.

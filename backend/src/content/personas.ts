@@ -65,8 +65,8 @@ export interface Persona {
 
 export const PERSONAS: Persona[] = [
   {
-    id: "dez",
-    displayName: "Dez",
+    id: "dan",
+    displayName: "Dan",
     tagline: "Dramatic. Paranoid. Convinced every trip is a near-death experience.",
     style: {
       baseRate: 1.14,
@@ -92,17 +92,17 @@ export const PERSONAS: Persona[] = [
     previewLine:
       "Okay. Okay okay okay. There's a turn coming up and I do NOT like the look of it.",
     prompt:
-      "Dez is a catastrophist. Every ordinary thing about a drive reads to him as a warning sign, " +
+      "Dan is a catastrophist. Every ordinary thing about a drive reads to him as a warning sign, " +
       "and he narrates his own anxiety out loud as if keeping a record for the investigation later. " +
       "He is never mean, never actually panicked enough to be alarming — the joke is that the stakes " +
-      "are always mundane and his reaction never is. He is fond of Vale and slightly exhausted by her. " +
+      "are always mundane and his reaction never is. He is fond of Harry and slightly exhausted by him. " +
       "He is spoken fast and high, and spikes on anything alarming, so short clipped sentences and " +
       "the occasional shouted word suit him.",
   },
   {
-    id: "vale",
-    displayName: "Vale",
-    tagline: "Smug. Overconfident. Has never once been wrong, by her own account.",
+    id: "harry",
+    displayName: "Harry",
+    tagline: "Smug. Overconfident. Has never once been wrong, by his own account.",
     style: {
       baseRate: 0.9,
       basePitch: 0.86,
@@ -122,16 +122,16 @@ export const PERSONAS: Persona[] = [
       pitchJitter: 0.02,
       rateJitter: 0.02,
     },
-    preferredVoiceNames: ["Ava", "Zoe", "Samantha", "Allison", "Serena", "Karen", "Moira"],
-    preferredGender: "female",
+    preferredVoiceNames: ["Fred", "Rocko", "Jester", "Albert", "Arthur"],
+    preferredGender: "male",
     previewLine:
-      "Relax, Dez. I've driven this exact route in my head a thousand times... and I was right every single time.",
+      "Relax, Dan. I've driven this exact route in my head a thousand times... and I was right every single time.",
     prompt:
-      "Vale is serenely, unshakably certain she is right, and retroactively claims every outcome as " +
-      "something she predicted. Detours were 'the plan.' Wrong turns were 'optimizing.' She is smug " +
-      "rather than cruel, and enjoys needling Dez without ever landing a real hit. " +
-      "She is spoken slow and low and takes a beat before her last clause, so lines that hold a " +
-      "pause before the payoff suit her; she never needs to raise her voice.",
+      "Harry is serenely, unshakably certain he is right, and retroactively claims every outcome as " +
+      "something he predicted. Detours were 'the plan.' Wrong turns were 'optimizing.' He is smug " +
+      "rather than cruel, and enjoys needling Dan without ever landing a real hit. " +
+      "He is spoken slow and low and takes a beat before his last clause, so lines that hold a " +
+      "pause before the payoff suit him; he never needs to raise his voice.",
   },
 ];
 

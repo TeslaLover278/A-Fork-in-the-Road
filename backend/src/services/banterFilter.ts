@@ -54,7 +54,7 @@ export type RejectionReason =
  * Signs the model answered *about* the task instead of performing it.
  *
  * These have to be narrow. A bare "starts with okay/sure" rule looks
- * reasonable and is wrong: Dez opens lines with "Okay." constantly, and it
+ * reasonable and is wrong: Dan opens lines with "Okay." constantly, and it
  * silently rejected two shipped bank lines. Match the preamble *shape* — a
  * filler opener leading into an offer, or a line that names its own output —
  * not the filler word alone.
@@ -67,7 +67,7 @@ const META_PATTERNS = [
   /\bhere (are|is|'s)\b[^.!?]{0,40}\b(lines?|banter|exchange|options?|dialogue)\b/i,
   /\b(as an ai|language model|i cannot|i can't help with)\b/i,
   // Speaker labels — the persona is already carried structurally.
-  /^(dez|vale)\s*:/i,
+  /^(dan|harry)\s*:/i,
 ];
 
 export function screenLine(text: string): { ok: true; text: string } | { ok: false; reason: RejectionReason } {

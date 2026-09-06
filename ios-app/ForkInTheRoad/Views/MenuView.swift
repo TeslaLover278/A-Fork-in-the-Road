@@ -48,7 +48,7 @@ struct MenuView: View {
                 } header: {
                     Text("About")
                 } footer: {
-                    Text("By default, Dez and Vale call out your turns themselves — a plain, literal voice is one toggle away in Voices & Banter. Either way, a rerouting or arrival announcement always cuts them off immediately.")
+                    Text("By default, Dan and Harry call out your turns themselves — a plain, literal voice is one toggle away in Voices & Banter. Either way, a rerouting or arrival announcement always cuts them off immediately.")
                 }
             }
             .navigationTitle("Menu")
