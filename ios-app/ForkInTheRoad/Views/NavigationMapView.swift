@@ -19,8 +19,20 @@ struct NavigationMapView: View {
         // TripProgressView (bottom) are all full-width and vary in height,
         // so any fixed top/bottom offset risks getting covered by one of them.
         .overlay(alignment: .trailing) {
-            MapUserLocationButton(scope: mapScope)
-                .padding(.trailing, 16)
+            if cameraPosition.hasBeenMovedByUser {
+                RecenterButton(action: recenter)
+                    .padding(.trailing, 16)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: cameraPosition.hasBeenMovedByUser)
+    }
+
+    /// Hands the camera back to MapKit's user-location tracking. Mid-drive
+    /// this matters more than on the home map — glancing away from the road
+    /// to drag the map back is the thing we're trying to avoid.
+    private func recenter() {
+        withAnimation(.easeInOut(duration: 0.35)) {
+            cameraPosition = .userLocation(fallback: .automatic)
         }
     }
 }

@@ -74,16 +74,27 @@ struct HomeView: View {
     }
 
     /// Sits directly under the search bar rather than in MapKit's default
-    /// top-trailing spot, so it doesn't compete with the compass there.
+    /// top-trailing spot, so it doesn't compete with the compass there. Only
+    /// present once the map has been panned away from the user — until then
+    /// the camera is already centred and the button would be a no-op.
     private var locationButton: some View {
         VStack {
             HStack {
                 Spacer()
-                MapUserLocationButton(scope: mapScope)
-                    .padding(.trailing)
+                if cameraPosition.hasBeenMovedByUser {
+                    RecenterButton(action: recenter)
+                        .padding(.trailing)
+                }
             }
             .padding(.top, 64)
             Spacer()
+        }
+        .animation(.easeInOut(duration: 0.2), value: cameraPosition.hasBeenMovedByUser)
+    }
+
+    private func recenter() {
+        withAnimation(.easeInOut(duration: 0.35)) {
+            cameraPosition = .userLocation(fallback: .automatic)
         }
     }
 
