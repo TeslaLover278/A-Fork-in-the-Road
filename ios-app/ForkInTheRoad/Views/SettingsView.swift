@@ -72,7 +72,7 @@ struct SettingsView: View {
     private func preview(_ persona: VoicePersona) {
         speechQueue.stopAllBanter()
         speechQueue.enqueueBanter(SpeechRequest(
-            text: persona.previewLine,
+            content: .text(persona.previewLine),
             persona: persona,
             rateMultiplier: settings.speechRateMultiplier,
             onStart: nil,
