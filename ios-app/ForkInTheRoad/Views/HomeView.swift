@@ -29,20 +29,24 @@ struct HomeView: View {
         GeometryReader { geometry in
             map
                 .safeAreaInset(edge: .top, spacing: 2) {
-                    ViewThatFits(in: .vertical) {
-                        header
-                        ScrollView { header }
+                    CappedHeight(limit: geometry.size.height * 0.4) {
+                        ViewThatFits(in: .vertical) {
+                            header
+                            ScrollView { header }
+                        }
                     }
-                    .frame(maxWidth: 620, maxHeight: geometry.size.height * 0.4)
-                    .frame(maxWidth: .infinity, alignment: .top)
+                    .frame(maxWidth: 620)
+                    .frame(maxWidth: .infinity)
                 }
                 .safeAreaInset(edge: .bottom, spacing: 2) {
-                    ViewThatFits(in: .vertical) {
-                        bottomControls
-                        ScrollView { bottomControls }
+                    CappedHeight(limit: geometry.size.height * 0.42) {
+                        ViewThatFits(in: .vertical) {
+                            bottomControls
+                            ScrollView { bottomControls }
+                        }
                     }
-                    .frame(maxWidth: 620, maxHeight: geometry.size.height * 0.42)
-                    .frame(maxWidth: .infinity, alignment: .bottom)
+                    .frame(maxWidth: 620)
+                    .frame(maxWidth: .infinity)
                 }
                 .overlay {
                     if isCalculatingRoute {

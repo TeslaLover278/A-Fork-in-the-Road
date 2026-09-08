@@ -142,49 +142,51 @@ private struct NavigationScreen: View {
                     .ignoresSafeArea()
 
                 layout {
-                    ViewThatFits(in: .vertical) {
-                        TurnBannerView(navigationEngine: navigationEngine, unitSettings: unitSettings)
-                        ScrollView {
+                    CappedHeight(limit: geometry.size.height * (isWide ? 1 : 0.32)) {
+                        ViewThatFits(in: .vertical) {
                             TurnBannerView(navigationEngine: navigationEngine, unitSettings: unitSettings)
+                            ScrollView {
+                                TurnBannerView(navigationEngine: navigationEngine, unitSettings: unitSettings)
+                            }
                         }
                     }
                     .frame(maxWidth: isWide ? 340 : 620)
-                    .frame(maxHeight: geometry.size.height * (isWide ? 1 : 0.32))
 
                     Spacer(minLength: 16)
 
-                    VStack(spacing: 10) {
-                        // In the layout flow rather than pinned to the map's edge, so
-                        // it always lands just above the waveform/trip card no matter
-                        // how tall those grow — and stays out of the vertical middle,
-                        // where it sat over the road ahead.
-                        if cameraPosition.hasBeenMovedByUser {
-                            HStack {
-                                Spacer()
-                                RecenterButton(action: recenter)
+                    CappedHeight(limit: geometry.size.height * (isWide ? 1 : 0.5)) {
+                        VStack(spacing: 10) {
+                            // In the layout flow rather than pinned to the map's edge, so
+                            // it always lands just above the waveform/trip card no matter
+                            // how tall those grow — and stays out of the vertical middle,
+                            // where it sat over the road ahead.
+                            if cameraPosition.hasBeenMovedByUser {
+                                HStack {
+                                    Spacer()
+                                    RecenterButton(action: recenter)
+                                }
                             }
-                        }
-                        ViewThatFits(in: .vertical) {
-                            tripCards
-                            ScrollView { tripCards }
-                                .defaultScrollAnchor(.bottom)
-                        }
-                        HStack(spacing: 10) {
-                            Button(action: onMenu) {
-                                Label("Crew", systemImage: "slider.horizontal.3")
-                                    .frame(maxWidth: .infinity)
+                            ViewThatFits(in: .vertical) {
+                                tripCards
+                                ScrollView { tripCards }
+                                    .defaultScrollAnchor(.bottom)
                             }
-                            .buttonStyle(RoadButtonStyle(secondary: true))
-                            .accessibilityLabel("Open menu and voice settings")
-                            Button(action: onEnd) {
-                                Label("End trip", systemImage: "xmark")
-                                    .frame(maxWidth: .infinity)
+                            HStack(spacing: 10) {
+                                Button(action: onMenu) {
+                                    Label("Crew", systemImage: "slider.horizontal.3")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(RoadButtonStyle(secondary: true))
+                                .accessibilityLabel("Open menu and voice settings")
+                                Button(action: onEnd) {
+                                    Label("End trip", systemImage: "xmark")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(RoadButtonStyle())
                             }
-                            .buttonStyle(RoadButtonStyle())
                         }
                     }
                     .frame(maxWidth: isWide ? 340 : 620)
-                    .frame(maxHeight: geometry.size.height * (isWide ? 1 : 0.5))
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 2)

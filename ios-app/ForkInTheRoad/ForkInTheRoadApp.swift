@@ -114,3 +114,29 @@ struct RoadRule: View {
         .accessibilityHidden(true)
     }
 }
+
+/// Caps a panel's height without inflating it to fill that cap.
+///
+/// `frame(maxHeight:)` is a flexible frame: handed a tall proposal it takes
+/// the whole thing and centres its content, which is what floated the panels
+/// away from the top and bottom edges of the screen. This lays the content out
+/// inside `limit` — so a `ViewThatFits` still swaps in its scrolling variant
+/// when the content is too tall — then reports back only the height the
+/// content actually used, letting the panel hug its edge.
+struct CappedHeight: Layout {
+    let limit: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let subview = subviews.first else { return .zero }
+        let size = subview.sizeThatFits(ProposedViewSize(width: proposal.width, height: limit))
+        return CGSize(width: size.width, height: min(size.height, limit))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(
+            at: CGPoint(x: bounds.minX, y: bounds.minY),
+            anchor: .topLeading,
+            proposal: ProposedViewSize(width: bounds.width, height: bounds.height)
+        )
+    }
+}
