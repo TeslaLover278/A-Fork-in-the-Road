@@ -13,11 +13,8 @@ struct RecenterButton: View {
         Button(action: action) {
             Image(systemName: "location.fill")
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 44, height: 44)
-                .background(.regularMaterial, in: Circle())
-                .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
         }
+        .buttonStyle(RoadButtonStyle(secondary: true))
         .accessibilityLabel("Center on my location")
         .transition(.scale(scale: 0.7).combined(with: .opacity))
     }

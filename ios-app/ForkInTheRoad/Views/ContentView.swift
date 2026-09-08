@@ -129,53 +129,73 @@ private struct NavigationScreen: View {
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
 
     var body: some View {
-        ZStack(alignment: .top) {
-            NavigationMapView(navigationEngine: navigationEngine, cameraPosition: $cameraPosition)
-                .ignoresSafeArea()
+        GeometryReader { geometry in
+            let isWide = geometry.size.width > geometry.size.height
+            let layout = isWide
+                ? AnyLayout(HStackLayout(alignment: .top, spacing: 16))
+                : AnyLayout(VStackLayout(spacing: 12))
 
-            VStack {
-                TurnBannerView(navigationEngine: navigationEngine, unitSettings: unitSettings)
-                Spacer()
-                // In the layout flow rather than pinned to the map's edge, so
-                // it always lands just above the caption/trip card no matter
-                // how tall those grow — and stays out of the vertical middle,
-                // where it sat over the road ahead.
-                if cameraPosition.hasBeenMovedByUser {
-                    HStack {
-                        Spacer()
-                        RecenterButton(action: recenter)
-                    }
-                    .padding(.horizontal)
-                    .padding(.bottom, 10)
-                }
-                if banterSettings.showCaptions, let caption = banterEngine.currentCaption {
-                    BanterCaptionView(personaID: caption.personaID, text: caption.text)
-                        .padding(.bottom, 8)
-                }
-                TripProgressView(navigationEngine: navigationEngine, unitSettings: unitSettings)
-                    .padding(.horizontal)
-                    .padding(.bottom, 24)
-            }
-            .padding(.top, 8)
-            .animation(.easeInOut(duration: 0.2), value: cameraPosition.hasBeenMovedByUser)
+            ZStack {
+                NavigationMapView(navigationEngine: navigationEngine, cameraPosition: $cameraPosition)
+                    .ignoresSafeArea()
 
-            VStack {
-                HStack {
-                    Spacer()
-                    Button(action: onMenu) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.title2)
-                            .foregroundStyle(.white, .black.opacity(0.6))
+                layout {
+                    ViewThatFits(in: .vertical) {
+                        TurnBannerView(navigationEngine: navigationEngine, unitSettings: unitSettings)
+                        ScrollView {
+                            TurnBannerView(navigationEngine: navigationEngine, unitSettings: unitSettings)
+                        }
                     }
-                    Button(action: onEnd) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(.white, .black.opacity(0.6))
+                    .frame(maxWidth: isWide ? 340 : 620)
+                    .frame(maxHeight: geometry.size.height * (isWide ? 1 : 0.32))
+
+                    Spacer(minLength: 16)
+
+                    VStack(spacing: 10) {
+                        // In the layout flow rather than pinned to the map's edge, so
+                        // it always lands just above the caption/trip card no matter
+                        // how tall those grow — and stays out of the vertical middle,
+                        // where it sat over the road ahead.
+                        if cameraPosition.hasBeenMovedByUser {
+                            HStack {
+                                Spacer()
+                                RecenterButton(action: recenter)
+                            }
+                        }
+                        ViewThatFits(in: .vertical) {
+                            tripCards
+                            ScrollView { tripCards }
+                                .defaultScrollAnchor(.bottom)
+                        }
+                        HStack(spacing: 10) {
+                            Button(action: onMenu) {
+                                Label("Crew", systemImage: "slider.horizontal.3")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(RoadButtonStyle(secondary: true))
+                            .accessibilityLabel("Open menu and voice settings")
+                            Button(action: onEnd) {
+                                Label("End trip", systemImage: "xmark")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(RoadButtonStyle())
+                        }
                     }
+                    .frame(maxWidth: isWide ? 340 : 620)
+                    .frame(maxHeight: geometry.size.height * (isWide ? 1 : 0.5))
                 }
-                .padding()
-                Spacer()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
+        }
+    }
+
+    private var tripCards: some View {
+        VStack(spacing: 10) {
+            if banterSettings.showCaptions, let caption = banterEngine.currentCaption {
+                BanterCaptionView(personaID: caption.personaID, text: caption.text)
+            }
+            TripProgressView(navigationEngine: navigationEngine, unitSettings: unitSettings)
         }
     }
 

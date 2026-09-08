@@ -13,32 +13,35 @@ struct BanterCaptionView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Circle()
-                .fill(color)
-                .frame(width: 10, height: 10)
-                .padding(.top, 5)
+            Text(String((persona?.displayName ?? "?").prefix(1)))
+                .font(.system(.title3, design: .serif, weight: .black))
+                .foregroundStyle(color)
+                .frame(width: 36, height: 40)
+                .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+                .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(persona?.displayName ?? "???")
-                    .font(.caption.bold())
+            VStack(alignment: .leading, spacing: 5) {
+                Text("\(persona?.displayName.uppercased() ?? "PASSENGER") / ON AIR")
+                    .font(RoadTheme.eyebrow)
                     .foregroundStyle(color)
                 Text(text)
-                    .font(.subheadline)
+                    .font(.system(.subheadline, design: .serif))
+                    .foregroundStyle(RoadTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(12)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
-        .padding(.horizontal)
-        .transition(.move(edge: .bottom).combined(with: .opacity))
-        .animation(.spring(duration: 0.3), value: text)
+        .padding(14)
+        .roadPanel()
+        .accessibilityElement(children: .combine)
+        .transition(.opacity)
     }
 
     private var color: Color {
         switch personaID {
-        case "dan": return .orange
-        case "harry": return .purple
-        default: return .gray
+        case "dan": return RoadTheme.accent
+        case "harry": return RoadTheme.teal
+        default: return RoadTheme.muted
         }
     }
 }

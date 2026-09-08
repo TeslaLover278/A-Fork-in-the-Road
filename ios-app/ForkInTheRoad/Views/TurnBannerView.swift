@@ -10,24 +10,34 @@ struct TurnBannerView: View {
     var body: some View {
         if navigationEngine.state == .navigating || navigationEngine.state == .rerouting,
            let step = navigationEngine.steps[safe: navigationEngine.currentStepIndex] {
-            HStack(spacing: 14) {
+            HStack(alignment: .top, spacing: 16) {
                 Image(systemName: ManeuverIcon.symbolName(for: step.instructions))
-                    .font(.system(size: 30, weight: .semibold))
-                    .frame(width: 44)
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(RoadTheme.asphalt)
+                    .frame(width: 60, height: 64)
+                    .background(RoadTheme.cream, in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(navigationEngine.state == .rerouting ? "REROUTING" : "NEXT TURN")
+                        .font(RoadTheme.eyebrow)
                     Text(distanceLabel)
-                        .font(.headline)
+                        .font(.system(.title, design: .rounded, weight: .heavy))
+                        .monospacedDigit()
                     Text(step.instructions)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding()
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
-            .padding(.horizontal)
+            .foregroundStyle(RoadTheme.cream)
+            .padding(16)
+            .background(RoadTheme.asphalt, in: RoundedRectangle(cornerRadius: 12))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(RoadTheme.cream.opacity(0.4), lineWidth: 1)
+            }
+            .accessibilityElement(children: .combine)
         }
     }
 

@@ -9,27 +9,42 @@ struct TripProgressView: View {
 
     var body: some View {
         if navigationEngine.state == .navigating || navigationEngine.state == .rerouting {
-            HStack(spacing: 0) {
-                progressItem(title: "Distance", value: distanceLabel)
-                Divider()
-                progressItem(title: "ETA", value: etaLabel)
+            VStack(alignment: .leading, spacing: 12) {
+                Text(navigationEngine.destinationName)
+                    .font(RoadTheme.eyebrow)
+                    .foregroundStyle(RoadTheme.muted)
+                    .lineLimit(2)
+                RoadRule()
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 20) {
+                        progressItem(title: "TO GO", value: distanceLabel)
+                        progressItem(title: "DRIVE TIME", value: etaLabel)
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+                    VStack(alignment: .leading, spacing: 12) {
+                        progressItem(title: "TO GO", value: distanceLabel)
+                        progressItem(title: "DRIVE TIME", value: etaLabel)
+                    }
+                }
             }
-            .padding(.vertical, 12)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, maxHeight: 80)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .padding(16)
+            .roadPanel()
         }
     }
 
     private func progressItem(title: String, value: String) -> some View {
-        VStack(spacing: 2) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(value)
-                .font(.headline)
+                .font(.system(.title2, design: .rounded, weight: .heavy))
+                .monospacedDigit()
+                .foregroundStyle(RoadTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
             Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(RoadTheme.eyebrow)
+                .foregroundStyle(RoadTheme.muted)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
     private var distanceLabel: String {

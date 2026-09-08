@@ -14,7 +14,9 @@ struct NavigationMapView: View {
             UserAnnotation()
             if let route = navigationEngine.route {
                 MapPolyline(route.polyline)
-                    .stroke(Color.accentColor, lineWidth: 6)
+                    .stroke(RoadTheme.asphalt, lineWidth: 10)
+                MapPolyline(route.polyline)
+                    .stroke(RoadTheme.accent, lineWidth: 6)
             }
         }
         .mapScope(mapScope)

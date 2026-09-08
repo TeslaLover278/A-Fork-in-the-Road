@@ -21,27 +21,56 @@ struct HomeView: View {
     @State private var previewTask: Task<Void, Never>?
     @State private var namingTask: Task<Void, Never>?
     @Namespace private var mapScope
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     private var hasLocationFix: Bool { locationService.currentLocation != nil }
 
     var body: some View {
-        ZStack(alignment: .top) {
+        GeometryReader { geometry in
             map
-            topControls
-            locationButton
-            if let destination {
-                destinationCard(for: destination)
-            } else {
-                mapHint
-            }
-            if isCalculatingRoute {
-                calculatingOverlay
-            }
+                .safeAreaInset(edge: .top, spacing: 8) {
+                    ViewThatFits(in: .vertical) {
+                        header
+                        ScrollView { header }
+                    }
+                    .frame(maxWidth: 620, maxHeight: geometry.size.height * 0.4)
+                    .frame(maxWidth: .infinity, alignment: .top)
+                }
+                .safeAreaInset(edge: .bottom, spacing: 8) {
+                    ViewThatFits(in: .vertical) {
+                        bottomControls
+                        ScrollView { bottomControls }
+                    }
+                    .frame(maxWidth: 620, maxHeight: geometry.size.height * 0.42)
+                    .frame(maxWidth: .infinity, alignment: .bottom)
+                }
+                .overlay {
+                    if isCalculatingRoute {
+                        calculatingOverlay
+                    }
+                }
         }
+        .foregroundStyle(RoadTheme.ink)
         .sheet(isPresented: $showSearch) {
             DestinationSearchSheet(region: visibleRegion) { item in
                 select(SelectedDestination(mapItem: item), recenter: true)
             }
+        }
+    }
+
+    private var header: some View {
+        VStack(spacing: 8) {
+            topControls
+            locationButton
+        }
+    }
+
+    @ViewBuilder
+    private var bottomControls: some View {
+        if let destination {
+            destinationCard(for: destination)
+        } else {
+            mapHint
         }
     }
 
@@ -53,7 +82,7 @@ struct HomeView: View {
                 UserAnnotation()
                 if let destination {
                     Marker(destination.name, systemImage: "mappin", coordinate: destination.coordinate)
-                        .tint(.red)
+                        .tint(RoadTheme.accent)
                 }
             }
             .mapControls {
@@ -78,16 +107,12 @@ struct HomeView: View {
     /// present once the map has been panned away from the user — until then
     /// the camera is already centred and the button would be a no-op.
     private var locationButton: some View {
-        VStack {
-            HStack {
-                Spacer()
-                if cameraPosition.hasBeenMovedByUser {
-                    RecenterButton(action: recenter)
-                        .padding(.trailing)
-                }
-            }
-            .padding(.top, 64)
+        HStack {
             Spacer()
+            if cameraPosition.hasBeenMovedByUser {
+                RecenterButton(action: recenter)
+                    .padding(.trailing)
+            }
         }
         .animation(.easeInOut(duration: 0.2), value: cameraPosition.hasBeenMovedByUser)
     }
@@ -101,129 +126,151 @@ struct HomeView: View {
     // MARK: - Overlays
 
     private var topControls: some View {
-        HStack(spacing: 10) {
-            Button(action: onOpenMenu) {
-                Image(systemName: "line.3.horizontal")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 44, height: 44)
-                    .background(.regularMaterial, in: Circle())
+        let layout = verticalSizeClass == .compact
+            ? AnyLayout(HStackLayout(spacing: 14))
+            : AnyLayout(VStackLayout(spacing: 14))
+        return layout {
+            HStack(spacing: 12) {
+                RoadMark()
+                    .frame(width: 42, height: 42)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("A FORK IN THE ROAD")
+                        .font(RoadTheme.eyebrow)
+                    Text("One route. Two opinions.")
+                        .font(.system(.subheadline, design: .serif, weight: .medium))
+                        .foregroundStyle(RoadTheme.muted)
+                }
+                Spacer(minLength: 0)
+                Button(action: onOpenMenu) {
+                    Image(systemName: "slider.horizontal.3")
+                }
+                .buttonStyle(RoadButtonStyle(secondary: true))
+                .accessibilityLabel("Menu")
             }
-            .accessibilityLabel("Menu")
 
             Button {
                 showSearch = true
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: 12) {
                     Image(systemName: "magnifyingglass")
-                    Text(destination?.name ?? "Where to?")
-                        .lineLimit(1)
+                    Text(destination?.name ?? "Where are we headed?")
+                        .multilineTextAlignment(.leading)
                     Spacer(minLength: 0)
+                    Image(systemName: "arrow.up.right")
                 }
-                .font(.body)
-                .foregroundStyle(destination == nil ? Color.secondary : Color.primary)
-                .padding(.horizontal, 14)
-                .frame(height: 44)
-                .background(.regularMaterial, in: Capsule())
             }
+            .buttonStyle(RoadButtonStyle())
             .accessibilityLabel("Search for a destination")
         }
-        .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
+        .padding(16)
+        .roadPanel()
         .padding(.horizontal)
         .padding(.top, 8)
     }
 
     private var mapHint: some View {
-        VStack {
-            Spacer()
-            Text(hasLocationFix ? "Tap anywhere on the map to drop a pin" : "Waiting for a GPS fix…")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(.regularMaterial, in: Capsule())
-                .padding(.bottom, 24)
+        VStack(alignment: .leading, spacing: 10) {
+            if verticalSizeClass != .compact {
+                Text("THE OPEN ROAD IS CALLING")
+                    .font(RoadTheme.eyebrow)
+                    .foregroundStyle(RoadTheme.teal)
+                Text("Pick a place.\nBring the backseat drivers.")
+                    .font(.system(.title2, design: .serif, weight: .bold))
+                    .fixedSize(horizontal: false, vertical: true)
+                RoadRule()
+            }
+            Label(
+                hasLocationFix ? "Tap the map to drop a pin, or search above." : "Waiting for a GPS fix…",
+                systemImage: hasLocationFix ? "mappin.and.ellipse" : "location"
+            )
+            .font(.footnote)
+            .foregroundStyle(RoadTheme.muted)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .roadPanel()
+        .padding(.horizontal)
+        .padding(.bottom, 12)
     }
 
     private func destinationCard(for destination: SelectedDestination) -> some View {
-        VStack {
-            Spacer()
-            VStack(alignment: .leading, spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(destination.name)
-                        .font(.title3.bold())
-                        .lineLimit(2)
-                    if let subtitle = destination.subtitle {
-                        Text(subtitle)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                }
-
-                if let preview, preview.destinationID == destination.id {
-                    Label(
-                        "\(DurationFormatter.short(preview.travelTime)) · \(unitSettings.shortDistance(preview.distance))",
-                        systemImage: "car.fill"
-                    )
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
-                } else if hasLocationFix {
-                    Label("Estimating drive…", systemImage: "car.fill")
+        VStack(alignment: .leading, spacing: 12) {
+            Text("YOUR NEXT STOP")
+                .font(RoadTheme.eyebrow)
+                .foregroundStyle(RoadTheme.teal)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(destination.name)
+                    .font(.system(.title2, design: .serif, weight: .bold))
+                    .fixedSize(horizontal: false, vertical: true)
+                if let subtitle = destination.subtitle {
+                    Text(subtitle)
                         .font(.subheadline)
-                        .foregroundStyle(.tertiary)
-                }
-
-                HStack(spacing: 12) {
-                    Button {
-                        onStart(destination.mapItem)
-                    } label: {
-                        Label("Go", systemImage: "location.north.fill")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!hasLocationFix)
-
-                    Button {
-                        clearDestination()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.headline)
-                            .padding(.vertical, 6)
-                            .padding(.horizontal, 6)
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel("Clear destination")
-                }
-
-                if !hasLocationFix {
-                    Text("Waiting for a GPS fix before a trip can start.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(RoadTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .padding(16)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
-            .padding(.horizontal)
-            .padding(.bottom, 20)
+
+            if let preview, preview.destinationID == destination.id {
+                Label(
+                    "\(DurationFormatter.short(preview.travelTime)) · \(unitSettings.shortDistance(preview.distance))",
+                    systemImage: "car.fill"
+                )
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(RoadTheme.muted)
+            } else if hasLocationFix {
+                Label("Estimating drive…", systemImage: "car.fill")
+                    .font(.subheadline)
+                    .foregroundStyle(RoadTheme.muted)
+            }
+
+            RoadRule()
+            HStack(spacing: 12) {
+                Button {
+                    onStart(destination.mapItem)
+                } label: {
+                    Label("Hit the road", systemImage: "arrow.up.right")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(RoadButtonStyle())
+                .disabled(!hasLocationFix)
+
+                Button {
+                    clearDestination()
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(RoadButtonStyle(secondary: true))
+                .accessibilityLabel("Clear destination")
+            }
+
+            if !hasLocationFix {
+                Text("Waiting for a GPS fix before a trip can start.")
+                    .font(.caption)
+                    .foregroundStyle(RoadTheme.muted)
+            }
         }
+        .padding(18)
+        .roadPanel()
+        .padding(.horizontal)
+        .padding(.bottom, 12)
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     private var calculatingOverlay: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text("Finding a route…")
-                .font(.subheadline)
+        VStack(spacing: 16) {
+            RoadMark()
+                .frame(width: 56, height: 56)
+            Text("Plotting the adventure.")
+                .font(.system(.title2, design: .serif, weight: .bold))
+            ProgressView("Finding a route…")
+                .tint(RoadTheme.accent)
         }
+        .padding(28)
+        .roadPanel()
         .padding(24)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(0.15))
+        .background(RoadTheme.asphalt.opacity(0.55))
+        .accessibilityAddTraits(.isModal)
         .ignoresSafeArea()
     }
 
