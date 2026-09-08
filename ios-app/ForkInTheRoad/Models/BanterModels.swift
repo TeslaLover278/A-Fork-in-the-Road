@@ -70,8 +70,9 @@ final class BanterSettings: ObservableObject {
     @Published var speechRateMultiplier: Double {
         didSet { UserDefaults.standard.set(speechRateMultiplier, forKey: Keys.rate) }
     }
-    @Published var showCaptions: Bool {
-        didSet { UserDefaults.standard.set(showCaptions, forKey: Keys.showCaptions) }
+    /// Shows the on-screen `BanterWaveformView` while a character is talking.
+    @Published var showWaveform: Bool {
+        didSet { UserDefaults.standard.set(showWaveform, forKey: Keys.showWaveform) }
     }
     /// When on, turns are read out in the plain navigation voice like a
     /// normal maps app. When off (the default), a recorded character clip
@@ -85,7 +86,7 @@ final class BanterSettings: ObservableObject {
         static let frequency = "banter.frequency"
         static let muted = "banter.mutedPersonaIDs"
         static let rate = "banter.speechRateMultiplier"
-        static let showCaptions = "banter.showCaptions"
+        static let showWaveform = "banter.showWaveform"
         static let realDirections = "banter.realDirectionsEnabled"
     }
 
@@ -94,7 +95,7 @@ final class BanterSettings: ObservableObject {
         frequency = BanterFrequency(rawValue: defaults.string(forKey: Keys.frequency) ?? "") ?? .occasional
         mutedPersonaIDs = Set(defaults.stringArray(forKey: Keys.muted) ?? [])
         speechRateMultiplier = defaults.object(forKey: Keys.rate) as? Double ?? 1.0
-        showCaptions = defaults.object(forKey: Keys.showCaptions) as? Bool ?? true
+        showWaveform = defaults.object(forKey: Keys.showWaveform) as? Bool ?? true
         realDirectionsEnabled = defaults.object(forKey: Keys.realDirections) as? Bool ?? false
     }
 

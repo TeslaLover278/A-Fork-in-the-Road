@@ -92,10 +92,10 @@ struct SettingsView: View {
                 .roadPanel()
 
                 VStack(alignment: .leading, spacing: 14) {
-                    sectionHeading("05 / ON-SCREEN CAPTIONS")
-                    Toggle("Show captions", isOn: $settings.showCaptions)
+                    sectionHeading("05 / ON-SCREEN WAVEFORM")
+                    Toggle("Show waveform", isOn: $settings.showWaveform)
                         .font(.headline)
-                    Text("Shows banter as on-screen subtitles while it's being spoken.")
+                    Text("Shows who's talking, and a waveform that moves with their voice, while a line is playing.")
                         .font(.footnote)
                         .foregroundStyle(RoadTheme.muted)
                 }

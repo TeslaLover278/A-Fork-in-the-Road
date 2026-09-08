@@ -40,7 +40,7 @@ struct ContentView: View {
             case .navigating, .rerouting:
                 NavigationScreen(
                     navigationEngine: navigationEngine,
-                    banterEngine: banterEngine,
+                    speechQueue: speechQueue,
                     banterSettings: banterSettings,
                     unitSettings: unitSettings,
                     onMenu: { showMenu = true },
@@ -119,10 +119,10 @@ struct ContentView: View {
 }
 
 /// The main driving screen: map + always-on-top turn banner + an optional
-/// banter caption bubble that never displaces the banner above it.
+/// banter waveform panel that never displaces the banner above it.
 private struct NavigationScreen: View {
     @ObservedObject var navigationEngine: NavigationEngine
-    @ObservedObject var banterEngine: BanterEngine
+    @ObservedObject var speechQueue: SpeechQueueManager
     @ObservedObject var banterSettings: BanterSettings
     @ObservedObject var unitSettings: UnitSettings
     let onMenu: () -> Void
@@ -155,7 +155,7 @@ private struct NavigationScreen: View {
 
                     VStack(spacing: 10) {
                         // In the layout flow rather than pinned to the map's edge, so
-                        // it always lands just above the caption/trip card no matter
+                        // it always lands just above the waveform/trip card no matter
                         // how tall those grow — and stays out of the vertical middle,
                         // where it sat over the road ahead.
                         if cameraPosition.hasBeenMovedByUser {
@@ -187,15 +187,22 @@ private struct NavigationScreen: View {
                     .frame(maxHeight: geometry.size.height * (isWide ? 1 : 0.5))
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.vertical, 2)
             }
         }
     }
 
+    /// The waveform is driven straight off the speech queue rather than off
+    /// BanterEngine: the queue is what actually knows a clip is playing and
+    /// whose it is, and the level it exposes is the real playback meter.
     private var tripCards: some View {
         VStack(spacing: 10) {
-            if banterSettings.showCaptions, let caption = banterEngine.currentCaption {
-                BanterCaptionView(personaID: caption.personaID, text: caption.text)
+            if banterSettings.showWaveform,
+               speechQueue.isSpeakingBanter,
+               let personaID = speechQueue.activePersonaID {
+                BanterWaveformView(personaID: personaID) {
+                    speechQueue.currentBanterLevel()
+                }
             }
             TripProgressView(navigationEngine: navigationEngine, unitSettings: unitSettings)
         }

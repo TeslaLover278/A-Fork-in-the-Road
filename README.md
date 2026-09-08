@@ -39,7 +39,10 @@ Xcode-GUI route is documented alongside it. In short:
   Settings but silent.
 - **Banter**: which recording plays when is decided by a small rules engine
   (`Services/BanterEngine.swift`) over the clip inventory. Fully offline; no
-  backend required.
+  backend required. While a clip plays, `Views/BanterWaveformView.swift` shows
+  who is talking and a waveform driven by the player's own level meter — there
+  are no transcripts to subtitle, so the indicator shows what the app actually
+  knows.
 - **Directions**: ordinary left/right turns are called out by a recorded
   character clip. Everything a fixed recording can't describe — distances,
   street names, roundabouts, merges, exits, u-turns — is read out in a plain

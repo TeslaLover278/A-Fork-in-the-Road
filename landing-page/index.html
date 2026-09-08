@@ -33,7 +33,7 @@
       </div>
     </div>
 
-    <div class="phone-mock" role="img" aria-label="App preview showing a turn-by-turn map with a caption bubble reading a joke from the character Harry">
+    <div class="phone-mock" role="img" aria-label="App preview showing a turn-by-turn map, with a panel below it showing that the character Dan is talking and a waveform moving with his voice">
       <svg viewBox="0 0 280 560" xmlns="http://www.w3.org/2000/svg">
         <rect x="4" y="4" width="272" height="552" rx="36" class="phone-frame"/>
         <rect x="16" y="16" width="248" height="528" rx="26" class="phone-screen"/>
@@ -52,12 +52,21 @@
         <text x="46" y="76" class="card-sub">Turn left onto 5th Ave</text>
         <path d="M232 52 l10 10 l-10 10" class="chevron"/>
 
-        <!-- banter caption -->
-        <rect x="28" y="452" width="224" height="60" rx="14" class="card caption-card"/>
-        <circle cx="46" cy="470" r="5" class="dot-harry"/>
-        <text x="58" y="474" class="caption-name">Harry</text>
-        <text x="46" y="494" class="caption-text">Called it. Smoothest</text>
-        <text x="46" y="506" class="caption-text">turn of the whole drive.</text>
+        <!-- banter waveform: who is talking, and their voice moving -->
+        <rect x="28" y="452" width="224" height="60" rx="14" class="card wave-card"/>
+        <circle cx="46" cy="470" r="5" class="dot-dan"/>
+        <text x="58" y="474" class="wave-name">DAN / ON AIR</text>
+        <g class="wave-bars">
+          <rect x="46" y="489" width="4" height="10" rx="2"/>
+          <rect x="55" y="486" width="4" height="16" rx="2"/>
+          <rect x="64" y="482" width="4" height="24" rx="2"/>
+          <rect x="73" y="487" width="4" height="14" rx="2"/>
+          <rect x="82" y="480" width="4" height="28" rx="2"/>
+          <rect x="91" y="484" width="4" height="20" rx="2"/>
+          <rect x="100" y="488" width="4" height="12" rx="2"/>
+          <rect x="109" y="483" width="4" height="22" rx="2"/>
+          <rect x="118" y="490" width="4" height="8" rx="2"/>
+        </g>
       </svg>
     </div>
   </header>

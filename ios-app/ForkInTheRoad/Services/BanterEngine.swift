@@ -17,13 +17,6 @@ import Foundation
 /// `ContentView` to fall back to the plain navigation voice instead.
 @MainActor
 final class BanterEngine: ObservableObject {
-    /// Drives the on-screen caption bubble (`BanterCaptionView`, gated on
-    /// `BanterSettings.showCaptions`). Stays nil for now: every line is a
-    /// recording and `BanterAudioBank` carries no transcripts, so there is
-    /// nothing truthful to caption. Set this when transcripts land alongside
-    /// the clips and captions light up again with no other change.
-    @Published private(set) var currentCaption: (personaID: String, text: String)?
-
     private let settings: BanterSettings
     private let speechQueue: SpeechQueueManager
 
@@ -164,8 +157,10 @@ final class BanterEngine: ObservableObject {
         }
     }
 
-    /// A request that plays a recorded clip. There's no transcript for these
-    /// yet, so no caption is shown while one plays.
+    /// A request that plays a recorded clip. Nothing here needs to describe
+    /// what is being said: the on-screen indicator is a waveform
+    /// (`BanterWaveformView`), fed by the speech queue's playback meter rather
+    /// than by any text this engine could supply.
     private func audioRequest(clip: BanterAudioBank.Clip, persona: VoicePersona) -> SpeechRequest {
         SpeechRequest(
             resourceName: clip.resourceName,

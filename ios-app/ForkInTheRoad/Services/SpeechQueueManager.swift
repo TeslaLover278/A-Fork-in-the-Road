@@ -50,6 +50,11 @@ final class SpeechQueueManager: NSObject, ObservableObject {
     /// actually is.
     private var audioPlayer: AVAudioPlayer?
 
+    /// Last value returned by `currentBanterLevel`, kept so successive samples
+    /// can be smoothed against each other. Deliberately not `@Published` — see
+    /// that method.
+    private var smoothedLevel: Float = 0
+
     /// The utterance currently owning the navigation lane, held by identity so
     /// the delegate callbacks can tell it apart from a stale one.
     private var navigationUtterance: AVSpeechUtterance?
@@ -81,6 +86,7 @@ final class SpeechQueueManager: NSObject, ObservableObject {
             player.stop()
         }
         audioPlayer = nil
+        smoothedLevel = 0
         banterQueue.removeAll()
         currentBanterFinishHandler = nil
         isSpeakingBanter = false
@@ -116,6 +122,7 @@ final class SpeechQueueManager: NSObject, ObservableObject {
             currentLane = nil
         }
         audioPlayer = nil
+        smoothedLevel = 0
         banterQueue.removeAll()
         currentBanterFinishHandler = nil
         isSpeakingBanter = false
@@ -156,8 +163,37 @@ final class SpeechQueueManager: NSObject, ObservableObject {
         player.delegate = self
         player.enableRate = true
         player.rate = min(2.0, max(0.5, Float(request.rateMultiplier)))
+        // Drives the on-screen waveform. Must be set before `play()`.
+        player.isMeteringEnabled = true
+        smoothedLevel = 0
         audioPlayer = player
         player.play()
+    }
+
+    /// How loud the playing banter clip is right now, 0...1, for
+    /// `BanterWaveformView`.
+    ///
+    /// Pulled by the view on its own timer rather than published on purpose: a
+    /// value that changes two dozen times a second would invalidate every view
+    /// observing this object at that rate, and the waveform is the only thing
+    /// on screen that cares. Returns 0 whenever no clip is playing, so the
+    /// caller needs no separate "is it running" check.
+    func currentBanterLevel() -> Float {
+        guard let player = audioPlayer, player.isPlaying else {
+            smoothedLevel = 0
+            return 0
+        }
+        player.updateMeters()
+        // `averagePower` is dB full-scale, nominally -160...0. Speech sits in a
+        // narrow band near the top, so treating anything under -45 dB as
+        // silence is what stops the bars from pinning at full height for the
+        // whole clip.
+        let normalized = max(0, min(1, (player.averagePower(forChannel: 0) + 45) / 45))
+        // Attack fast, release slow. A meter that falls as quickly as it rises
+        // reads as flicker rather than as a voice.
+        let smoothing: Float = normalized > smoothedLevel ? 0.6 : 0.2
+        smoothedLevel += (normalized - smoothedLevel) * smoothing
+        return smoothedLevel
     }
 
     /// The voice for real turn-by-turn instructions. Deliberately whatever
@@ -218,6 +254,7 @@ final class SpeechQueueManager: NSObject, ObservableObject {
     /// cancelled utterance this path only ever sees a completed line.
     fileprivate func handleAudioClipFinished() {
         audioPlayer = nil
+        smoothedLevel = 0
         guard currentLane == .banter else { return }
         currentBanterFinishHandler?()
         currentBanterFinishHandler = nil

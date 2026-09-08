@@ -178,10 +178,10 @@ h1 {
 .card-sub { font: 400 11px -apple-system, sans-serif; fill: #5a5a60; }
 .chevron { fill: none; stroke: #1a1a1e; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 
-.caption-card { fill: #f4f1ff; }
-.dot-harry { fill: var(--harry); }
-.caption-name { font: 700 11px -apple-system, sans-serif; fill: var(--harry); }
-.caption-text { font: 400 11px -apple-system, sans-serif; fill: #33313d; }
+.wave-card { fill: #fff2ee; }
+.dot-dan { fill: var(--dan); }
+.wave-name { font: 700 9px ui-monospace, SFMono-Regular, Menlo, monospace; fill: var(--dan); letter-spacing: 0.06em; }
+.wave-bars rect { fill: var(--dan); }
 
 /* ---------- sections ---------- */
 
