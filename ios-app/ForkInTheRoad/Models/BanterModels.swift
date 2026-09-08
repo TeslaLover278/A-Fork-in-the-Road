@@ -12,13 +12,6 @@ enum BanterCategory: String, CaseIterable, Codable, Hashable {
     case trafficComment
 }
 
-struct BanterLine: Identifiable {
-    let id = UUID()
-    let personaID: String
-    let category: BanterCategory
-    let text: String
-}
-
 enum BanterFrequency: String, CaseIterable, Identifiable, Codable, Hashable {
     case off
     case occasional
@@ -81,8 +74,9 @@ final class BanterSettings: ObservableObject {
         didSet { UserDefaults.standard.set(showCaptions, forKey: Keys.showCaptions) }
     }
     /// When on, turns are read out in the plain navigation voice like a
-    /// normal maps app. When off (the default), Dan and Harry deliver the
-    /// turn themselves instead — see `BanterEngine.announceManeuver`.
+    /// normal maps app. When off (the default), a recorded character clip
+    /// calls out the turn instead where one exists — see
+    /// `BanterEngine.announceManeuver`.
     @Published var realDirectionsEnabled: Bool {
         didSet { UserDefaults.standard.set(realDirectionsEnabled, forKey: Keys.realDirections) }
     }
@@ -116,11 +110,17 @@ final class BanterSettings: ObservableObject {
         }
     }
 
-    /// True whenever there's nobody available to deliver a turn as banter —
-    /// the user asked for the plain voice, muted every character, or turned
-    /// banter off outright. Silence on a turn is never an option, so this is
-    /// the single place that decides when to fall back to the real voice.
+    /// True whenever there's nobody available to deliver *any* turn as banter
+    /// — the user asked for the plain voice, muted every character, turned
+    /// banter off outright, or no character has recordings yet.
+    ///
+    /// This covers the settings-level cases only. Whether a *particular*
+    /// maneuver has a recording that fits it is a separate question, answered
+    /// per turn by `BanterEngine.canAnnounceManeuver`; both have to be
+    /// consulted, since silence on a turn is never an option.
     var mustUseRealDirections: Bool {
-        realDirectionsEnabled || frequency == .off || VoicePersona.all.allSatisfy(isMuted)
+        realDirectionsEnabled
+            || frequency == .off
+            || VoicePersona.all.allSatisfy { isMuted($0) || !$0.hasRecordedClips }
     }
 }

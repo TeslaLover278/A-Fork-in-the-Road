@@ -95,22 +95,18 @@ untested without a compiler/device on hand while writing it:
   would expect the next instruction — drive one real route and adjust
   `stepAdvanceRadius`/`approachAnnounceDistance` in `NavigationEngine.swift`
   if instructions feel early/late.
-- **Voice matching** (`VoiceCatalog` in `VoicePersona.swift`): each persona
-  lists preferred system voices in order (`Tom`, `Aaron`, … / `Ava`, `Zoe`,
-  …) and takes the highest-quality variant installed of the first one it
-  finds; failing that, the best voice in the right register. A stock
-  simulator usually has only the compact variants, which sound noticeably
-  worse than what a real device with a downloaded voice gets — so judge the
-  voices on hardware, after downloading an Enhanced or Premium English voice
-  under **Settings > Accessibility > Spoken Content > Voices**. The app's own
-  Settings screen shows which voice and quality each persona resolved to, has
-  a per-persona preview button, and prompts for the download if both landed
-  on basic voices.
-- **Delivery** (`Services/SpeechScript.swift`): lines are cut at their
-  punctuation and each clause is spoken with its own pitch/rate/volume and
-  pause. The parameters live in `Models/VoiceStyle.swift` and are the thing
-  to tune by ear on a device — `pauseScale` and `punchlinePause` in
-  particular change comic timing a lot, and are easiest to judge with the
-  Settings preview button rather than by driving.
+- **Clip bundling** (`Content/BanterAudioBank.swift`): every character line
+  is a pre-recorded mp3 under `ForkInTheRoad/Resources/BanterAudio/<persona>/`,
+  looked up at play time by resource name via `Bundle.main.url`. If a target
+  is set up by hand rather than with XcodeGen, confirm those files actually
+  landed in **Copy Bundle Resources** — a clip that wasn't bundled fails
+  silently by design (the line is skipped rather than stalling the queue), so
+  the symptom is a character who is simply quiet, not a crash. The Settings
+  screen's per-persona preview button is the fastest way to check.
+- **Silent characters are expected**: nothing is synthesized to stand in for a
+  missing recording, so a persona with no clips is genuinely silent. Harry is
+  in that state today — he is listed in Settings and says nothing until his
+  clips exist. Only plain left/right turns have turn recordings; every other
+  maneuver is announced in the plain navigation voice instead.
 - No unit/UI tests are included — the plan explicitly scoped this to
   UX/feature/voice-system design, not test infrastructure.

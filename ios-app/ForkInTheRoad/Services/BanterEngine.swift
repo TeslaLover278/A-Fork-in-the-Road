@@ -1,47 +1,44 @@
 import Foundation
-import CoreLocation
 
 /// Decides *when* and *what* comedic banter fires. This is intentionally
 /// dumb about routing — it only reacts to NavigationEvents it's handed and
 /// pushes finished lines into SpeechQueueManager's low-priority banter lane,
 /// which is what actually guarantees banter can't step on real directions.
 ///
-/// Turns are the one exception to "just flavor": by default Dan and Harry
-/// *are* how a turn gets spoken — see `announceManeuver` — with the plain
-/// navigation voice only as a fallback (`BanterSettings.mustUseRealDirections`).
+/// Everything a character says comes from a pre-recorded clip in
+/// `BanterAudioBank`. There is no synthesized stand-in for a line that hasn't
+/// been recorded: a persona/category with no clip simply stays quiet, and a
+/// persona with no clips at all (`VoicePersona.hasRecordedClips`) never
+/// speaks.
 ///
-/// Every category tries a recorded clip (`BanterAudioBank`) before falling
-/// back to a scripted text line spoken through TTS — so a persona with no
-/// clips yet (or a maneuver with no matching clip) still works exactly as it
-/// did before clips existed.
+/// Turns are the one exception to "just flavor": where a recorded turn clip
+/// exists, Dan *is* how the turn gets spoken — see `announceManeuver`. Where
+/// one doesn't, the turn is not left to silence; `canAnnounceManeuver` tells
+/// `ContentView` to fall back to the plain navigation voice instead.
 @MainActor
 final class BanterEngine: ObservableObject {
+    /// Drives the on-screen caption bubble (`BanterCaptionView`, gated on
+    /// `BanterSettings.showCaptions`). Stays nil for now: every line is a
+    /// recording and `BanterAudioBank` carries no transcripts, so there is
+    /// nothing truthful to caption. Set this when transcripts land alongside
+    /// the clips and captions light up again with no other change.
     @Published private(set) var currentCaption: (personaID: String, text: String)?
 
     private let settings: BanterSettings
     private let speechQueue: SpeechQueueManager
-    private let lineBank: BanterLineBank
-    private let unitSettings: UnitSettings
 
     private var lastFired: [BanterCategory: Date] = [:]
-    private var recentLineIDs: [UUID] = []
     private var recentClipNames: [String] = []
     private let recentHistoryLimit = 12
     private var hasFiredTripStart = false
     private var hasFiredArrival = false
 
-    /// Avoid picking the same direction-announcement template/clip twice in
-    /// a row.
-    private var lastDanAnnouncementIndex: Int?
-    private var lastHarryRebuttalIndex: Int?
-    private var lastHarrySoloAnnouncementIndex: Int?
+    /// Avoid picking the same turn clip twice in a row.
     private var recentTurnClipNames: [String] = []
 
-    init(settings: BanterSettings, speechQueue: SpeechQueueManager, unitSettings: UnitSettings, lineBank: BanterLineBank = .shared) {
+    init(settings: BanterSettings, speechQueue: SpeechQueueManager) {
         self.settings = settings
         self.speechQueue = speechQueue
-        self.unitSettings = unitSettings
-        self.lineBank = lineBank
     }
 
     /// Call when a new trip starts so the once-per-trip triggers (trip
@@ -50,9 +47,26 @@ final class BanterEngine: ObservableObject {
         hasFiredTripStart = false
         hasFiredArrival = false
         lastFired.removeAll()
-        recentLineIDs.removeAll()
         recentClipNames.removeAll()
         recentTurnClipNames.removeAll()
+    }
+
+    /// Whether this maneuver has a character who can actually announce it.
+    /// False means no unmuted persona has a recorded clip for this direction
+    /// — sharp turns, roundabouts, merges, exits and u-turns always land here
+    /// — and the caller must speak the plain instruction itself. Silence on a
+    /// turn is never an option, so `ContentView` consults this before
+    /// deciding whether to skip the real announcement.
+    ///
+    /// Deliberately a pure query: it must not touch the recently-used clip
+    /// history, or asking the question would change which clip
+    /// `announceManeuver` then picks.
+    func canAnnounceManeuver(step: RouteStepInfo) -> Bool {
+        guard settings.frequency != .off, !settings.mustUseRealDirections else { return false }
+        guard let direction = BanterAudioBank.direction(for: step.instructions) else { return false }
+        return VoicePersona.all.contains { persona in
+            !settings.isMuted(persona) && BanterAudioBank.hasTurnClip(persona: persona.id, direction: direction)
+        }
     }
 
     func handle(_ event: NavigationEvent) {
@@ -63,9 +77,9 @@ final class BanterEngine: ObservableObject {
             guard !hasFiredTripStart else { return }
             hasFiredTripStart = true
             fireExchange(for: .tripStart)
-        case .approachingManeuver(let step, let distanceRemaining):
+        case .approachingManeuver(let step, _):
             guard !settings.mustUseRealDirections else { return } // real voice already covers this maneuver
-            announceManeuver(step: step, distanceRemaining: distanceRemaining)
+            announceManeuver(step: step)
         case .wentOffRoute, .rerouted:
             fireExchange(for: .rerouting)
         case .arrived:
@@ -83,13 +97,20 @@ final class BanterEngine: ObservableObject {
         }
     }
 
+    /// Personas who are unmuted *and* have recordings. A persona still waiting
+    /// on clips is skipped rather than counted and then left silent — counting
+    /// them would burn a slot in the exchange on nothing.
+    private var availablePersonas: [VoicePersona] {
+        VoicePersona.all.filter { !settings.isMuted($0) && $0.hasRecordedClips }
+    }
+
     private func fireExchange(for category: BanterCategory) {
         let cooldown = settings.frequency.cooldown(for: category)
         if let last = lastFired[category], Date().timeIntervalSince(last) < cooldown {
             return
         }
 
-        let activePersonas = VoicePersona.all.filter { !settings.isMuted($0) }
+        let activePersonas = availablePersonas
         guard !activePersonas.isEmpty else { return }
 
         let length = Int.random(in: settings.frequency.exchangeLength)
@@ -105,12 +126,6 @@ final class BanterEngine: ObservableObject {
                     recentClipNames.removeFirst()
                 }
                 requests.append(audioRequest(clip: clip, persona: persona))
-            } else if let line = lineBank.line(persona: persona.id, category: category, excluding: recentLineIDs) {
-                recentLineIDs.append(line.id)
-                if recentLineIDs.count > recentHistoryLimit {
-                    recentLineIDs.removeFirst()
-                }
-                requests.append(textRequest(text: line.text, persona: persona))
             }
         }
         guard !requests.isEmpty else { return }
@@ -118,86 +133,43 @@ final class BanterEngine: ObservableObject {
         enqueue(requests)
     }
 
-    /// The default way a turn is spoken: Dan states the real instruction,
-    /// then Harry disagrees with him — never with the turn itself, since two
-    /// characters giving conflicting real directions would be dangerous, not
-    /// funny. Unlike `fireExchange`, this always fires; a turn isn't optional
-    /// flavor, it's the thing the driver needs to hear.
+    /// The default way a plain left/right turn is spoken: the character calls
+    /// it out from a recording instead of the flat navigation voice. Unlike
+    /// `fireExchange` this ignores cooldowns — a turn isn't optional flavor,
+    /// it's the thing the driver needs to hear.
     ///
-    /// A plain left/right turn prefers Dan's recorded clip for that
-    /// direction — it doesn't state the distance out loud, but
-    /// `TurnBannerView` already shows the real distance and instruction on
-    /// screen the whole time, so that's covered regardless of what's spoken.
-    /// Anything else (sharp turns, roundabouts, merges, exits, u-turns, or
-    /// Dan having no clip) falls back to the dynamic-distance TTS template.
-    private func announceManeuver(step: RouteStepInfo, distanceRemaining: CLLocationDistance) {
-        let activePersonas = VoicePersona.all.filter { !settings.isMuted($0) }
-        guard !activePersonas.isEmpty else { return }
-        let hasDan = activePersonas.contains { $0.id == "dan" }
-        let hasHarry = activePersonas.contains { $0.id == "harry" }
+    /// A recorded clip doesn't state the distance out loud, but
+    /// `TurnBannerView` shows the real distance and instruction on screen the
+    /// whole time, so that's covered regardless of what's spoken.
+    ///
+    /// Anything without a matching clip is left alone here on purpose:
+    /// `canAnnounceManeuver` has already told `ContentView` to announce it in
+    /// the plain voice, so returning without enqueuing anything is what makes
+    /// that fallback correct rather than a dropped turn.
+    private func announceManeuver(step: RouteStepInfo) {
+        guard let direction = BanterAudioBank.direction(for: step.instructions) else { return }
 
-        var requests: [SpeechRequest] = []
-
-        if hasDan, let direction = BanterAudioBank.direction(for: step.instructions),
-           let clip = BanterAudioBank.turnClip(persona: "dan", direction: direction, excluding: recentTurnClipNames) {
+        for persona in availablePersonas {
+            guard let clip = BanterAudioBank.turnClip(
+                persona: persona.id,
+                direction: direction,
+                excluding: recentTurnClipNames
+            ) else { continue }
             recentTurnClipNames.append(clip.resourceName)
             if recentTurnClipNames.count > recentHistoryLimit {
                 recentTurnClipNames.removeFirst()
             }
-            requests.append(audioRequest(clip: clip, persona: .dan))
-            if hasHarry {
-                requests.append(harryRebuttalRequest())
-            }
-        } else if hasDan {
-            let distance = unitSettings.spokenDistance(distanceRemaining)
-            let template = DirectionAnnouncementBank.danAnnouncements.pickAvoiding(&lastDanAnnouncementIndex)
-            let text = DirectionAnnouncementBank.fill(template, distance: distance, instruction: step.instructions)
-            requests.append(textRequest(text: text, persona: .dan))
-
-            if hasHarry {
-                requests.append(harryRebuttalRequest())
-            }
-        } else if hasHarry {
-            // Dan is muted — Harry has to deliver the actual instruction
-            // himself rather than the turn going unspoken.
-            let distance = unitSettings.spokenDistance(distanceRemaining)
-            let template = DirectionAnnouncementBank.harrySoloAnnouncements.pickAvoiding(&lastHarrySoloAnnouncementIndex)
-            let text = DirectionAnnouncementBank.fill(template, distance: distance, instruction: step.instructions)
-            requests.append(textRequest(text: text, persona: .harry))
+            enqueue([audioRequest(clip: clip, persona: persona)])
+            return
         }
-
-        guard !requests.isEmpty else { return }
-        enqueue(requests)
-    }
-
-    private func harryRebuttalRequest() -> SpeechRequest {
-        let rebuttal = DirectionAnnouncementBank.harryRebuttals.pickAvoiding(&lastHarryRebuttalIndex)
-        return textRequest(text: rebuttal, persona: .harry)
-    }
-
-    /// A request that speaks scripted text through TTS, with the caption set
-    /// to that same text.
-    private func textRequest(text: String, persona: VoicePersona) -> SpeechRequest {
-        SpeechRequest(
-            content: .text(text),
-            persona: persona,
-            rateMultiplier: settings.speechRateMultiplier,
-            onStart: { [weak self] in
-                self?.currentCaption = (persona.id, text)
-            },
-            onFinish: { [weak self] in
-                if self?.currentCaption?.text == text {
-                    self?.currentCaption = nil
-                }
-            }
-        )
     }
 
     /// A request that plays a recorded clip. There's no transcript for these
     /// yet, so no caption is shown while one plays.
     private func audioRequest(clip: BanterAudioBank.Clip, persona: VoicePersona) -> SpeechRequest {
         SpeechRequest(
-            content: .audioClip(resourceName: clip.resourceName, fileExtension: clip.fileExtension),
+            resourceName: clip.resourceName,
+            fileExtension: clip.fileExtension,
             persona: persona,
             rateMultiplier: settings.speechRateMultiplier,
             onStart: nil,
@@ -209,22 +181,5 @@ final class BanterEngine: ObservableObject {
         for request in requests {
             speechQueue.enqueueBanter(request)
         }
-    }
-}
-
-private extension Array where Element == String {
-    /// A random element, steering away from whichever index was picked last
-    /// so a template doesn't repeat back-to-back on consecutive turns.
-    func pickAvoiding(_ lastIndex: inout Int?) -> String {
-        guard count > 1 else {
-            lastIndex = indices.first
-            return first ?? ""
-        }
-        var index = Int.random(in: indices)
-        if index == lastIndex {
-            index = (index + 1) % count
-        }
-        lastIndex = index
-        return self[index]
     }
 }

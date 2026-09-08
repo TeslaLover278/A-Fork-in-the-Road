@@ -29,17 +29,23 @@ Xcode-GUI route is documented alongside it. In short:
 
 - **Navigation**: MapKit (`MKDirections`, live `CLLocationManager` tracking,
   off-route detection against the route polyline, automatic reroute).
-- **Voices**: on-device `AVSpeechSynthesizer`, no cloud TTS, no API keys.
-  Each persona resolves to the best-quality installed variant of a named
-  system voice (`Services/../VoiceCatalog`), and every line is cut at its
-  punctuation and performed clause by clause — pitch, rate, volume and pauses
-  per clause, from a per-character profile in `Models/VoiceStyle.swift`. Dan
-  rushes and spikes; Harry drags and sits on a punchline. That prosody pass is
-  what keeps them from sounding like one flat robot reading two scripts.
-- **Banter**: a scripted content bank (`Content/BanterLineBank.swift`) picked
-  by a small rules engine (`Services/BanterEngine.swift`). This works fully
-  offline and needs no backend; the backend upgrades it to generated lines
-  when reachable, and is not required for the app to function.
+- **Voices**: pre-recorded only. Every line a character speaks is a real
+  performance bundled with the app (`Resources/BanterAudio/<persona>/`,
+  inventoried in `Content/BanterAudioBank.swift`) and played back through
+  `AVAudioPlayer`. Nothing is synthesized: there is no per-character voice
+  matching and no prosody pass, because there is no generated speech left to
+  make sound human. A line that hasn't been recorded is simply not spoken, and
+  a character with no recordings yet — Harry, currently — stays listed in
+  Settings but silent.
+- **Banter**: which recording plays when is decided by a small rules engine
+  (`Services/BanterEngine.swift`) over the clip inventory. Fully offline; no
+  backend required.
+- **Directions**: ordinary left/right turns are called out by a recorded
+  character clip. Everything a fixed recording can't describe — distances,
+  street names, roundabouts, merges, exits, u-turns — is read out in a plain
+  system voice instead, which is the one and only place
+  `AVSpeechSynthesizer` is still used. A "Real directions" setting switches
+  every turn over to that plain voice; it is off by default.
 - **The core guarantee**: `Services/SpeechQueueManager.swift` is the single
   owner of speech output. Real turn-by-turn instructions always interrupt
   and take priority over banter; banter only ever plays in the gaps.
@@ -47,7 +53,7 @@ Xcode-GUI route is documented alongside it. In short:
 This was written on a machine without Xcode/macOS available, so there's no
 `.xcodeproj` in the repo — `ios-app/SETUP.md` walks through generating one
 from the source files in a few minutes, and flags the couple of things
-(step-timing heuristics, voice availability) worth sanity-checking on a real
+(step-timing heuristics, clip playback) worth sanity-checking on a real
 device once you can build it.
 
 The app is designed to run entirely client-side and still work — the
@@ -59,12 +65,13 @@ backend below is an enhancement layer, never a dependency.
 [`backend/README.md`](backend/README.md) for the full API and design notes.
 It does three things:
 
-- **Generated banter** — fresh Dan/Harry lines from the Claude API instead of
-  the fixed script. Every generated line is re-checked server-side and
-  rejected if it could be mistaken for a real driving instruction; anything
-  filtered falls back to the scripted bank. `/v1/banter` never returns a
-  server error for a generation problem, so the app degrades to its offline
-  behaviour rather than to an error mid-drive.
+- **Generated banter** — fresh Dan/Harry lines as *text*, from the Claude
+  API. Every generated line is re-checked server-side and rejected if it
+  could be mistaken for a real driving instruction; anything filtered falls
+  back to the scripted bank. `/v1/banter` never returns a server error for a
+  generation problem, so a caller degrades rather than erroring mid-drive.
+  Note that the iOS app does not consume this today: it speaks only from its
+  recordings, so there is nothing on the client to voice a generated line.
 - **Accounts and trip sync** — email/password accounts, rotating refresh
   tokens, and last-write-wins trip history sync across devices.
 - **Content delivery** — personas and the joke bank served over HTTP with

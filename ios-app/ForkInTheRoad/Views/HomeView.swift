@@ -28,7 +28,7 @@ struct HomeView: View {
     var body: some View {
         GeometryReader { geometry in
             map
-                .safeAreaInset(edge: .top, spacing: 8) {
+                .safeAreaInset(edge: .top, spacing: 2) {
                     ViewThatFits(in: .vertical) {
                         header
                         ScrollView { header }
@@ -36,7 +36,7 @@ struct HomeView: View {
                     .frame(maxWidth: 620, maxHeight: geometry.size.height * 0.4)
                     .frame(maxWidth: .infinity, alignment: .top)
                 }
-                .safeAreaInset(edge: .bottom, spacing: 8) {
+                .safeAreaInset(edge: .bottom, spacing: 2) {
                     ViewThatFits(in: .vertical) {
                         bottomControls
                         ScrollView { bottomControls }
@@ -165,7 +165,7 @@ struct HomeView: View {
         .padding(16)
         .roadPanel()
         .padding(.horizontal)
-        .padding(.top, 8)
+        .padding(.top, 2)
     }
 
     private var mapHint: some View {
@@ -190,7 +190,7 @@ struct HomeView: View {
         .padding(18)
         .roadPanel()
         .padding(.horizontal)
-        .padding(.bottom, 12)
+        .padding(.bottom, 2)
     }
 
     private func destinationCard(for destination: SelectedDestination) -> some View {
@@ -252,7 +252,7 @@ struct HomeView: View {
         .padding(18)
         .roadPanel()
         .padding(.horizontal)
-        .padding(.bottom, 12)
+        .padding(.bottom, 2)
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 

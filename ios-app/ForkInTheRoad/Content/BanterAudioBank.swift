@@ -1,10 +1,10 @@
 import Foundation
 
 /// Fixed inventory of pre-recorded persona clips bundled with the app (see
-/// `Resources/BanterAudio/<persona>/`). This is deliberately just data, same
-/// spirit as `BanterLineBank`: a persona/category with no clips here isn't
-/// broken, it just isn't covered yet — `BanterEngine` falls back to the
-/// scripted text bank spoken through on-device TTS for anything missing.
+/// `Resources/BanterAudio/<persona>/`). This is deliberately just data: a
+/// persona/category with no clips here isn't broken, it just isn't covered
+/// yet — that beat stays silent rather than being covered by a synthesized
+/// stand-in. Everything a character says comes from this file.
 enum BanterAudioBank {
     struct Clip {
         let personaID: String
@@ -16,7 +16,8 @@ enum BanterAudioBank {
 
     /// Only the two directions we can reliably tell apart from MapKit's
     /// instruction string get their own clip — see `direction(for:)`. Every
-    /// other maneuver keeps the dynamic-distance TTS announcement instead.
+    /// other maneuver is announced in the plain navigation voice instead,
+    /// since no fixed recording can describe it accurately.
     enum TurnDirection {
         case left
         case right
@@ -61,7 +62,8 @@ enum BanterAudioBank {
     ]
 
     /// Picks a random clip for the given persona/category, avoiding recently
-    /// used ones when possible — mirrors `BanterLineBank.line`.
+    /// used ones when possible. Falls back to allowing a repeat rather than
+    /// returning nil if every clip in that bucket was recently used.
     static func clip(persona: String, category: BanterCategory, excluding: [String]) -> Clip? {
         let candidates = clips.filter { $0.personaID == persona && $0.category == category }
         guard !candidates.isEmpty else { return nil }
@@ -80,11 +82,28 @@ enum BanterAudioBank {
         return pool.randomElement().map { Clip(personaID: $0.personaID, category: .upcomingTurn, resourceName: $0.resourceName, fileExtension: $0.fileExtension) }
     }
 
+    /// True when this persona has any recordings at all. Backs
+    /// `VoicePersona.hasRecordedClips`, which is how the rest of the app
+    /// tells a character who can speak from one who is still waiting on
+    /// recordings.
+    static func hasAnyClips(persona: String) -> Bool {
+        clips.contains { $0.personaID == persona } || turnClips.contains { $0.personaID == persona }
+    }
+
+    /// Whether a turn in this direction can be spoken by this persona at all.
+    /// Checked before a maneuver is handed to `BanterEngine` so the plain
+    /// navigation voice can cover the turn when it can't — see
+    /// `BanterEngine.canAnnounceManeuver`. Deliberately a pure lookup: it
+    /// must not disturb the recently-used history that `turnClip` maintains.
+    static func hasTurnClip(persona: String, direction: TurnDirection) -> Bool {
+        turnClips.contains { $0.personaID == persona && $0.direction == direction }
+    }
+
     /// Best-effort maneuver direction from MapKit's instruction string, for
     /// deciding whether a turn has a recorded clip at all. Mirrors the
     /// heuristic in `ManeuverIcon.symbolName`, but narrower: sharp/slight
-    /// turns, roundabouts, merges, exits and u-turns return nil so they keep
-    /// the dynamic-distance TTS announcement instead of a generic clip that
+    /// turns, roundabouts, merges, exits and u-turns return nil so the plain
+    /// navigation voice announces them, rather than a generic clip that
     /// can't describe them accurately.
     static func direction(for instructions: String) -> TurnDirection? {
         let text = instructions.lowercased()

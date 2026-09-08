@@ -23,7 +23,7 @@ struct ContentView: View {
         _banterSettings = StateObject(wrappedValue: settings)
         _speechQueue = StateObject(wrappedValue: queue)
         _unitSettings = StateObject(wrappedValue: units)
-        _banterEngine = StateObject(wrappedValue: BanterEngine(settings: settings, speechQueue: queue, unitSettings: units))
+        _banterEngine = StateObject(wrappedValue: BanterEngine(settings: settings, speechQueue: queue))
     }
 
     var body: some View {
@@ -61,10 +61,9 @@ struct ContentView: View {
             locationService.requestPermission()
         }
         .onChange(of: scenePhase) { _, phase in
-            // The set of installed voices can change while we're backgrounded
-            // — downloading an Enhanced voice is exactly what Settings tells
-            // the user to go and do — so re-resolve on the way back in.
-            if phase == .active { VoiceCatalog.shared.invalidate() }
+            // The installed system voices can change while we're backgrounded,
+            // so re-resolve the plain navigation voice on the way back in.
+            if phase == .active { speechQueue.invalidateNavigationVoice() }
         }
         .onReceive(navigationEngine.events) { event in
             handle(event)
@@ -92,17 +91,20 @@ struct ContentView: View {
     /// instructions are spoken via `speakNavigation`, which unconditionally
     /// preempts any banter in progress — that's the whole guarantee.
     ///
-    /// Turns are the exception: by default the plain instruction below is
-    /// skipped entirely and Dan/Harry deliver the turn themselves (see
-    /// `BanterEngine.announceManeuver`), unless the user turned on real
-    /// directions in Settings — `mustUseRealDirections` covers that toggle
-    /// plus the cases where there's simply nobody left to say it.
+    /// Turns are the exception: the plain instruction below is skipped when a
+    /// recorded character clip is going to call the turn out instead (see
+    /// `BanterEngine.announceManeuver`). Both conditions have to hold for that
+    /// — `mustUseRealDirections` covers the Settings toggle and the cases where
+    /// nobody is left to speak at all, and `canAnnounceManeuver` covers whether
+    /// a recording exists for *this* maneuver. Anything a recording can't
+    /// describe (sharp turns, roundabouts, merges, exits, u-turns) therefore
+    /// still gets announced properly rather than passing in silence.
     private func handle(_ event: NavigationEvent) {
         switch event {
         case .tripStarted(let destinationName):
             speechQueue.speakNavigation("Starting navigation to \(destinationName).")
         case .approachingManeuver(let step, let distanceRemaining):
-            if banterSettings.mustUseRealDirections {
+            if banterSettings.mustUseRealDirections || !banterEngine.canAnnounceManeuver(step: step) {
                 speechQueue.speakNavigation("In \(unitSettings.spokenDistance(distanceRemaining)), \(step.instructions).")
             }
         case .wentOffRoute:

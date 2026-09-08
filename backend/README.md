@@ -209,19 +209,28 @@ src/
 test/                    122 tests
 ```
 
-`src/content/` mirrors `ios-app/ForkInTheRoad/Content/BanterLineBank.swift` and
-`Models/VoicePersona.swift`. **They are duplicated, not shared** — a Swift file
-can't be imported by Node. If you edit one, edit the other and bump
-`CONTENT_VERSION`.
+`src/content/personas.ts` mirrors `ios-app/ForkInTheRoad/Models/VoicePersona.swift`.
+**They are duplicated, not shared** — a Swift file can't be imported by Node. If
+you edit one, edit the other and bump `CONTENT_VERSION`. Only the persona roster
+is mirrored: how a character sounds isn't described on either side any more,
+because every line is a pre-recorded clip bundled in the app.
+
+`src/content/lineBank.ts` has no Swift counterpart. The app used to carry a
+matching text bank; it now speaks only from recordings, so the line bank here
+serves generated-banter text that nothing on the client voices yet.
 
 ## Not done
 
 **The iOS app doesn't call this yet.** It has no networking layer at all — no
 `URLSession`, no base URL, no `BanterService`. The backend is complete and
 tested on its own terms, but wiring it up means adding a client to the Swift
-side: a `RemoteBanterProvider` that `BanterEngine` consults before falling back
-to the local `BanterLineBank`, plus a sign-in screen for sync. That's app work,
-not backend work, so it's left as the next step rather than half-done here.
+side, plus a sign-in screen for sync. That's app work, not backend work, so
+it's left as the next step rather than half-done here.
+
+Generated banter has a further gap now: the app plays pre-recorded clips and
+synthesizes nothing, so a line of freshly generated *text* has no voice to
+speak it. Accounts, trip sync and content delivery are usable as-is; `/v1/banter`
+needs a decision about how a generated line would ever be heard.
 
 Also out of scope: OAuth/Sign in with Apple (email+password only), push
 notifications, and any multi-instance concerns (see rate limits above).

@@ -6,43 +6,36 @@ enum SpeechLane: Equatable {
     case banter
 }
 
-/// What a `SpeechRequest` actually plays. `.text` goes through `SpeechScript`
-/// and `AVSpeechSynthesizer`, same as before; `.audioClip` plays a bundled
-/// recording through `AVAudioPlayer` instead — no clause splitting, since a
-/// recorded line already has its performance baked in.
-enum SpeechContent {
-    case text(String)
-    case audioClip(resourceName: String, fileExtension: String)
-}
-
 struct SpeechRequest {
-    let content: SpeechContent
+    /// Bundle resource name of the recording to play, without extension.
+    let resourceName: String
+    let fileExtension: String
     let persona: VoicePersona?
     let rateMultiplier: Double
     let onStart: (() -> Void)?
     let onFinish: (() -> Void)?
 }
 
-/// Single owner of the AVSpeechSynthesizer so real turn-by-turn instructions
-/// and comedic banter can never race to speak at once. This is the piece
-/// that makes "banter never blocks or delays real directions" true:
+/// Single owner of both audio outputs — the banter clip player and the
+/// navigation synthesizer — so real turn-by-turn instructions and comedic
+/// banter can never race to speak at once. This is the piece that makes
+/// "banter never blocks or delays real directions" true:
 ///
 /// - Navigation instructions always interrupt whatever is currently
-///   speaking (including a banter line mid-sentence) and speak immediately.
+///   playing (including a banter clip mid-sentence) and speak immediately.
 /// - Banter only ever plays when the navigation lane is free, and is
 ///   dropped rather than queued if a nav instruction is about to speak.
 ///
 /// The lane — not `synthesizer.isSpeaking` — is the gate. `speak()` is
 /// asynchronous, so `isSpeaking` can still read `false` immediately after a
 /// navigation utterance is handed to the synthesizer; gating on it would let
-/// a banter line that was enqueued in the same runloop turn slip out on top
+/// a banter clip that was enqueued in the same runloop turn slip out on top
 /// of the instruction.
 ///
-/// One banter line is several utterances, not one: `SpeechScript` cuts it
-/// into clauses so each can be delivered with its own pitch, rate and pause.
-/// They are spoken one at a time and hold the banter lane for the whole
-/// sequence, so a half-spoken line can still be cut off cleanly by a real
-/// instruction — the remaining clauses are dropped with it.
+/// Every persona line is a pre-recorded clip played through `AVAudioPlayer`,
+/// with its performance already baked in. The synthesizer here is used for
+/// exactly one thing: the plain navigation voice, which has to read out
+/// street names and distances no fixed recording could cover.
 @MainActor
 final class SpeechQueueManager: NSObject, ObservableObject {
     @Published private(set) var isSpeakingBanter = false
@@ -53,19 +46,18 @@ final class SpeechQueueManager: NSObject, ObservableObject {
     private var currentLane: SpeechLane?
     private var currentBanterFinishHandler: (() -> Void)?
 
-    /// Clauses of the banter line currently being spoken that haven't been
-    /// handed to the synthesizer yet. Non-empty means the line is mid-
-    /// delivery and still owns the banter lane.
-    private var pendingFragments: [AVSpeechUtterance] = []
-
-    /// The player for a banter line that's a recorded clip rather than TTS.
-    /// Held only while one is actually playing.
+    /// The player for the banter clip currently playing. Held only while one
+    /// actually is.
     private var audioPlayer: AVAudioPlayer?
 
-    /// The utterance currently owning the navigation lane. Held by identity
-    /// so the delegate callbacks can tell a finished/cancelled *navigation*
-    /// utterance apart from a banter one — they share one synthesizer.
+    /// The utterance currently owning the navigation lane, held by identity so
+    /// the delegate callbacks can tell it apart from a stale one.
     private var navigationUtterance: AVSpeechUtterance?
+
+    /// Resolved lazily and cached, since `speechVoices()` is not cheap and the
+    /// answer only changes when the user installs a voice. See
+    /// `invalidateNavigationVoice`.
+    private var navigationVoiceCache: AVSpeechSynthesisVoice??
 
     override init() {
         super.init()
@@ -90,7 +82,6 @@ final class SpeechQueueManager: NSObject, ObservableObject {
         }
         audioPlayer = nil
         banterQueue.removeAll()
-        pendingFragments.removeAll()
         currentBanterFinishHandler = nil
         isSpeakingBanter = false
         activePersonaID = nil
@@ -100,7 +91,7 @@ final class SpeechQueueManager: NSObject, ObservableObject {
         // that has to be understood the first time — but they do get the
         // best-quality variant of the system voice.
         let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = VoiceCatalog.shared.navigationVoice()
+        utterance.voice = navigationVoice()
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         navigationUtterance = utterance
         synthesizer.speak(utterance)
@@ -119,9 +110,6 @@ final class SpeechQueueManager: NSObject, ObservableObject {
 
     func stopAllBanter() {
         if currentLane == .banter {
-            if synthesizer.isSpeaking {
-                synthesizer.stopSpeaking(at: .word)
-            }
             if let player = audioPlayer, player.isPlaying {
                 player.stop()
             }
@@ -129,10 +117,16 @@ final class SpeechQueueManager: NSObject, ObservableObject {
         }
         audioPlayer = nil
         banterQueue.removeAll()
-        pendingFragments.removeAll()
         currentBanterFinishHandler = nil
         isSpeakingBanter = false
         activePersonaID = nil
+    }
+
+    /// Drops the cached navigation voice. Worth calling if the installed
+    /// voices can change under the app — the user downloading an enhanced
+    /// voice in iOS Settings while we are backgrounded.
+    func invalidateNavigationVoice() {
+        navigationVoiceCache = nil
     }
 
     private func playNextBanterIfIdle() {
@@ -140,45 +134,13 @@ final class SpeechQueueManager: NSObject, ObservableObject {
         // reports itself as speaking; see the note on the class.
         guard currentLane == nil, !synthesizer.isSpeaking, !banterQueue.isEmpty else { return }
         let next = banterQueue.removeFirst()
-
-        switch next.content {
-        case .text(let text):
-            playTextBanter(text, request: next)
-        case .audioClip(let resourceName, let fileExtension):
-            playAudioClipBanter(resourceName: resourceName, fileExtension: fileExtension, request: next)
-        }
+        play(next)
     }
 
-    private func playTextBanter(_ text: String, request: SpeechRequest) {
-        let fragments = SpeechScript.utterances(
-            for: text,
-            persona: request.persona,
-            rateMultiplier: request.rateMultiplier
-        )
-        // An empty or punctuation-only line has nothing to perform. Report it
-        // as finished so callers aren't left waiting on a line that never
-        // starts, and move on to the next one.
-        guard !fragments.isEmpty else {
-            request.onFinish?()
-            playNextBanterIfIdle()
-            return
-        }
-
-        currentLane = .banter
-        isSpeakingBanter = true
-        activePersonaID = request.persona?.id
-        currentBanterFinishHandler = request.onFinish
-        request.onStart?()
-
-        pendingFragments = fragments
-        speakNextFragment()
-    }
-
-    /// A missing/unloadable resource is treated the same as an empty text
-    /// line above: report it finished and move on, rather than stalling the
-    /// queue on a file that was never bundled.
-    private func playAudioClipBanter(resourceName: String, fileExtension: String, request: SpeechRequest) {
-        guard let url = Bundle.main.url(forResource: resourceName, withExtension: fileExtension),
+    /// A missing or unloadable recording is reported as finished and skipped,
+    /// rather than stalling the queue on a file that was never bundled.
+    private func play(_ request: SpeechRequest) {
+        guard let url = Bundle.main.url(forResource: request.resourceName, withExtension: request.fileExtension),
               let player = try? AVAudioPlayer(contentsOf: url) else {
             request.onFinish?()
             playNextBanterIfIdle()
@@ -198,62 +160,62 @@ final class SpeechQueueManager: NSObject, ObservableObject {
         player.play()
     }
 
-    /// Hands the next clause of the current line to the synthesizer. Clauses
-    /// are spoken one at a time rather than queued up front so that a
-    /// navigation instruction interrupting mid-line only has to cancel the
-    /// one utterance actually in flight.
-    private func speakNextFragment() {
-        guard !pendingFragments.isEmpty else { return }
-        synthesizer.speak(pendingFragments.removeFirst())
+    /// The voice for real turn-by-turn instructions. Deliberately whatever
+    /// the system default is — directions should sound like the app, not like
+    /// a third character — but upgraded to the best installed variant of that
+    /// voice, since a device usually has several sharing one name (compact,
+    /// enhanced, premium) and `speechVoices()` does not return them best
+    /// first.
+    private func navigationVoice() -> AVSpeechSynthesisVoice? {
+        if let cached = navigationVoiceCache { return cached }
+        let language = AVSpeechSynthesisVoice.currentLanguageCode()
+        let systemDefault = AVSpeechSynthesisVoice(language: language)
+        let resolved = systemDefault.flatMap { bestVariant(named: $0.name, language: language) } ?? systemDefault
+        navigationVoiceCache = .some(resolved)
+        return resolved
+    }
+
+    /// The highest-quality installed voice sharing `name`, preferring an exact
+    /// locale match over a same-language one. Siri's voices are listed but
+    /// reserved for the system, and Personal Voice needs an authorization we
+    /// never request — both resolve to something unusable, so both are
+    /// filtered out.
+    private func bestVariant(named name: String, language: String) -> AVSpeechSynthesisVoice? {
+        let languagePrefix = String(language.prefix(2))
+        let matches = AVSpeechSynthesisVoice.speechVoices().filter { voice in
+            guard voice.language.hasPrefix(languagePrefix) else { return false }
+            guard voice.name.caseInsensitiveCompare(name) == .orderedSame else { return false }
+            guard !voice.identifier.lowercased().contains("siri") else { return false }
+            guard !voice.voiceTraits.contains(.isPersonalVoice) else { return false }
+            return true
+        }
+        return matches.max { lhs, rhs in
+            let lhsExact = lhs.language == language
+            let rhsExact = rhs.language == language
+            if lhsExact != rhsExact { return rhsExact }
+            return lhs.quality.rawValue < rhs.quality.rawValue
+        }
     }
 
     fileprivate func handleFinished(_ utterance: AVSpeechUtterance) {
-        if utterance === navigationUtterance {
-            // Releasing the navigation lane is what lets banter queued
-            // alongside this instruction finally play.
-            navigationUtterance = nil
-            currentLane = nil
-            playNextBanterIfIdle()
-        } else if currentLane == .banter {
-            // Still mid-line: keep the lane and speak the next clause.
-            if !pendingFragments.isEmpty {
-                speakNextFragment()
-                return
-            }
-            currentBanterFinishHandler?()
-            currentBanterFinishHandler = nil
-            isSpeakingBanter = false
-            activePersonaID = nil
-            currentLane = nil
-            playNextBanterIfIdle()
-        }
+        guard utterance === navigationUtterance else { return }
+        // Releasing the navigation lane is what lets banter queued alongside
+        // this instruction finally play.
+        navigationUtterance = nil
+        currentLane = nil
+        playNextBanterIfIdle()
     }
 
     fileprivate func handleCancelled(_ utterance: AVSpeechUtterance) {
-        if utterance === navigationUtterance {
-            navigationUtterance = nil
-            currentLane = nil
-            playNextBanterIfIdle()
-            return
-        }
-        // A cancelled banter line. Drop the rest of its clauses — half a
-        // line is finished the moment it's interrupted. Don't clear the lane
-        // blindly, though: when `speakNavigation` interrupts banter it has
-        // already claimed the navigation lane by the time this callback
-        // lands, and clearing it here would let the next banter line talk
-        // over the instruction.
-        pendingFragments.removeAll()
-        currentBanterFinishHandler = nil
-        isSpeakingBanter = false
-        activePersonaID = nil
-        if currentLane == .banter {
-            currentLane = nil
-        }
+        guard utterance === navigationUtterance else { return }
+        navigationUtterance = nil
+        currentLane = nil
+        playNextBanterIfIdle()
     }
 
     /// A clip finishing naturally. `stop()` from `speakNavigation`/
-    /// `stopAllBanter` does not trigger this delegate callback, so unlike
-    /// `handleCancelled` this path only ever sees a completed line.
+    /// `stopAllBanter` does not trigger this delegate callback, so unlike a
+    /// cancelled utterance this path only ever sees a completed line.
     fileprivate func handleAudioClipFinished() {
         audioPlayer = nil
         guard currentLane == .banter else { return }

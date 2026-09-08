@@ -7,6 +7,10 @@ struct SettingsView: View {
     @ObservedObject var settings: BanterSettings
     @ObservedObject var speechQueue: SpeechQueueManager
 
+    /// Clips already heard from the preview button this visit, so consecutive
+    /// taps walk through a character's range instead of repeating one line.
+    @State private var previewedClipNames: [String] = []
+
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
@@ -29,7 +33,7 @@ struct SettingsView: View {
                         .font(.headline)
                     Text(settings.realDirectionsEnabled
                          ? "Turns are read out in a plain voice, like a normal maps app."
-                         : "Turns are delivered by Dan and Harry instead of a plain voice — Dan calls out the turn, Harry disagrees with him about it. Turn this on for a plain, literal voice instead.")
+                         : "Ordinary left and right turns are called out by the characters themselves. Anything they have no recording for — roundabouts, merges, exits, u-turns — is read out in the plain voice regardless, so no turn ever passes in silence. Turn this on to use the plain voice for every turn.")
                         .font(.footnote)
                         .foregroundStyle(RoadTheme.muted)
                 }
@@ -60,17 +64,6 @@ struct SettingsView: View {
                             onPreview: { preview(persona) }
                         )
                     }
-                    if VoiceCatalog.shared.allVoicesAreBasicQuality() {
-                        // The single biggest win available on the voices, and
-                        // nothing the app can do for the user itself — the
-                        // downloads live behind an Accessibility screen with
-                        // no public URL to deep-link to.
-                        Text("Both characters are using basic system voices. For much better ones, download an Enhanced or Premium English voice in Settings › Accessibility › Spoken Content › Voices, then come back here.")
-                            .font(.footnote)
-                            .foregroundStyle(RoadTheme.muted)
-                            .padding(16)
-                            .roadPanel()
-                    }
                 }
 
                 VStack(alignment: .leading, spacing: 14) {
@@ -91,7 +84,7 @@ struct SettingsView: View {
                     .font(RoadTheme.eyebrow)
                     .foregroundStyle(RoadTheme.muted)
                     .accessibilityHidden(true)
-                    Text("Adjusts how fast both characters talk, including when they're calling out a turn. The plain voice used when Real Directions is on is unaffected.")
+                    Text("Adjusts the playback speed of the characters' recordings, including when they're calling out a turn. The plain voice used for real directions is unaffected.")
                         .font(.footnote)
                         .foregroundStyle(RoadTheme.muted)
                 }
@@ -175,13 +168,27 @@ struct SettingsView: View {
         }
     }
 
-    /// Previews go through the same banter lane as everything else, so a real
-    /// instruction still cuts a preview off mid-word if one arrives while
-    /// Settings is open mid-drive.
+    /// Plays one of the character's actual recordings, so the preview is the
+    /// real thing rather than a description of it. Goes through the same banter
+    /// lane as everything else, so a real instruction still cuts a preview off
+    /// mid-word if one arrives while Settings is open mid-drive.
+    ///
+    /// Passing the recently-played clips as `excluding` is what keeps repeated
+    /// taps from landing on the same line every time.
     private func preview(_ persona: VoicePersona) {
+        guard let clip = BanterAudioBank.clip(
+            persona: persona.id,
+            category: .idleChatter,
+            excluding: previewedClipNames
+        ) else { return }
+        previewedClipNames.append(clip.resourceName)
+        if previewedClipNames.count > 5 {
+            previewedClipNames.removeFirst()
+        }
         speechQueue.stopAllBanter()
         speechQueue.enqueueBanter(SpeechRequest(
-            content: .text(persona.previewLine),
+            resourceName: clip.resourceName,
+            fileExtension: clip.fileExtension,
             persona: persona,
             rateMultiplier: settings.speechRateMultiplier,
             onStart: nil,
@@ -212,18 +219,23 @@ private struct PersonaRow: View {
             RoadRule()
                 .accessibilityHidden(true)
 
-            Text(VoiceCatalog.shared.description(for: persona))
-                .font(.footnote.monospaced())
-                .foregroundStyle(RoadTheme.muted)
-
-            Button(action: onPreview) {
-                Label(isSpeaking ? "Playing" : "Preview voice", systemImage: isSpeaking ? "waveform" : "play.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
+            if persona.hasRecordedClips {
+                Button(action: onPreview) {
+                    Label(isSpeaking ? "Playing" : "Preview voice", systemImage: isSpeaking ? "waveform" : "play.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(RoadButtonStyle(secondary: true))
+                .disabled(isSpeaking)
+                .accessibilityLabel("\(isSpeaking ? "Playing" : "Preview") \(persona.displayName)")
+            } else {
+                // No recordings yet, and nothing is synthesized to stand in for
+                // them, so this character is genuinely silent. Say so plainly
+                // rather than offering a preview that plays nothing.
+                Text("Not recorded yet — \(persona.displayName) stays quiet until his lines are in.")
+                    .font(.footnote)
+                    .foregroundStyle(RoadTheme.muted)
             }
-            .buttonStyle(RoadButtonStyle(secondary: true))
-            .disabled(isSpeaking)
-            .accessibilityLabel("\(isSpeaking ? "Playing" : "Preview") \(persona.displayName)")
         }
         .padding(20)
         .roadPanel()
